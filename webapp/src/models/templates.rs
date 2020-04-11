@@ -76,20 +76,34 @@ pub fn by_id(models: &Models, id: &String) -> Result<Option<Template>, String> {
 }
 
 pub fn save(models: &Models, t: &Template) -> Result<Template, String> {
+    // TODO Check template is valid in handlebars syntax.
+    debug!("templates::save, template: {:?} name: {}", &t.id, &t.name);
     let coll = collection_templates(models);
     // Clone object
     let id = object_id(&t.id).ok_or("Invalid id".to_string())?;
     let d = Document::from(t);
     let result = match id {
-        Bson::ObjectId(_) => {
+        Bson::ObjectId(_) => { // Update exists object
             let options = ReplaceOptions {
                 upsert: Some(true),
                 ..Default::default()
             };
-            coll.replace_one(doc! { template::KEY_ID: id }, d, Some(options))
-                .map(|r| r.upserted_id)
+            let filter = doc! { template::KEY_ID: id };
+            coll.replace_one(filter, d, Some(options))
+                .map(|r| {
+                    debug!("templates::save to update, result: {:?}", &r);
+                    if r.modified_count >= 0 {
+                        object_id(&t.id)
+                    } else {
+                        r.upserted_id
+                    }
+                })
         },
-        _ => coll.insert_one(d, None).map(|r| r.inserted_id)
+        _ => // Insert new object
+            coll.insert_one(d, None).map(|r| {
+                debug!("templates::save to create, result: {:?}", &r);
+                r.inserted_id
+            })
     };
     match result {
         Ok(Some(Bson::ObjectId(id))) => {

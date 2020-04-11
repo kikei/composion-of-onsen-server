@@ -1,12 +1,16 @@
+use std::fs;
+
+use crate::template::{Template};
 use crate::utils::mongodb;
 use crate::models::{self, Models};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Action {
     List,
     Add
 }
 
+#[derive(Debug)]
 pub struct Args {
     pub action: Action,
     pub id: Option<String>,
@@ -36,11 +40,40 @@ fn template_list(models: &Models, _args: &Args) {
     }
 }
 
-fn template_add(_models: &Models, _args: &Args) {
-    println!("Not implemented");
+fn template_add(models: &Models, args: &Args) {
+    if args.path.is_none() {
+        println!("Path required, args: {:?}", args);
+        return;
+    };
+    if args.name.is_none() {
+        println!("Name required, args: {:?}", args);
+        return;
+    }
+    let path = args.path.as_ref().unwrap();
+    let name = args.name.as_ref().unwrap();
+    let body = fs::read_to_string(path.as_str());
+    if body.is_err() {
+        println!("File does not exists, path: {}, error: {}",
+                 &path, &body.unwrap_err());
+        return;
+    };
+    
+    let t = Template {
+        id: args.id.clone(),
+        name: name.to_string(),
+        body: body.unwrap()
+    };
+    match models::templates::save(models, &t) {
+        Ok(t) => println!("Successfully save template: {:?}", t),
+        Err(e) => println!("Failed to save template, error: {}", e)
+    }
 }
 
 pub fn run(args: Args) {
+    // TODO Use setup_logger
+    env_logger::init();
+    info!("Log initialized.");
+
     let db = mongodb::get_unpooled_connection();
     if db.is_err() {
         println!("Failed to get connection, error: {}", db.unwrap_err());
