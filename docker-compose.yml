@@ -1,0 +1,41 @@
+version: "3.7"
+services:
+  webapp:
+    build: ./webapp
+    volumes:
+      - ./webapp:/usr/src/app
+    ports:
+      - "8088:8088"
+    links:
+      - mongodb
+    depends_on:
+      - mongodb
+    environment:
+      RUST_LOG: info
+    tty: true
+  mongodb:
+    image: mongo:4
+    volumes:
+      - ./data/mongodb:/data/db
+      - ./mongodb:/docker-entrypoint-initdb.d
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin
+      MONGO_INITDB_DATABASE: admin
+  mongo-express:
+    image: mongo-express:latest
+    ports:
+      - "8081:8081"
+    links:
+      - mongodb
+    depends_on:
+      - mongodb
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb
+      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
+      ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD}
+
