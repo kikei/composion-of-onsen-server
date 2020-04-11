@@ -21,7 +21,10 @@ fn object_id(id: &Option<String>) -> Option<Bson> {
 
 impl From<&Document> for Template {
     fn from(item: &Document) -> Self {
-        let id = document_str(item, template::KEY_ID);
+        let id = item.get_object_id(template::KEY_ID)
+            .map(|v| v.to_hex())
+            .map_err(|e| error!("BUG: Couldn't get ObjectId, error:{}", e))
+            .ok();
         let name = document_str(item, template::KEY_NAME).unwrap();
         let body = document_str(item, template::KEY_BODY).unwrap();
         Template {

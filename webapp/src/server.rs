@@ -4,15 +4,11 @@ use actix_web::{
 use listenfd::ListenFd;
 use serde::{Deserialize, Serialize};
 
-use r2d2::Pool;
-use r2d2_mongodb::{ConnectionOptions, MongodbConnectionManager};
-
 use crate::models;
 use crate::utils;
+use crate::utils::mongodb::{DBConnectionPool, create_pool};
 use crate::template::{Template, Render};
 use crate::analysis::Analysis;
-
-type DBConnectionPool = Pool<MongodbConnectionManager>;
 
 #[derive(Deserialize)]
 struct ScrubQuery {
@@ -185,24 +181,6 @@ fn get_template(info: web::Path<AnalysisPath>,
 // /debug/scrube
 fn debug_scrub(query: web::Query<ScrubQuery>) -> String {
     utils::scrub::scrub(&query.title)
-}
-
-fn create_pool() -> DBConnectionPool {
-    let dbuser = "webapp";
-    let dbpassword = "PASSWORD";
-    let address = "mongodb";
-    let dbname = "onsen";
-    let manager = MongodbConnectionManager::new(
-        ConnectionOptions::builder()
-            .with_host(&address, 27017)
-            .with_db(&dbname)
-            .with_auth(&dbuser, &dbpassword)
-            .build());
-    let pool = Pool::builder()
-        .max_size(2)
-        .build(manager)
-        .unwrap();
-    pool
 }
 
 fn setup_logger() {

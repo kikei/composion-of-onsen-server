@@ -14,13 +14,16 @@ mod template;
 mod analysis;
 mod models;
 mod server;
+mod cli;
+
+use cli::template_cli;
 
 const COMMAND_TEMPLATE: &str = "template";
 const COMMAND_APP: &str = "app";
 const COMMAND_HELP: &str = "help";
 
 enum Action {
-    TemplatesList,
+    Template(template_cli::Args),
     AppStart
 }
 
@@ -66,10 +69,15 @@ fn get_options(opts: &Options, args: &[String])
  * Template actions
  */
 fn get_template_action(args: &[String]) -> Option<Action> {
+    let mut a = template_cli::Args::new();
     let mut opts = Options::new();
     opts.optflag("l", "list", "List up all templates");
+    opts.optflag("a", "add", "Add or update a template");
+    opts.optopt("i", "id", "Template id", "<template_id>");
+    opts.optopt("n", "name", "Template name", "<name>");
+    opts.optopt("p", "path", "Template path", "<path>");
     opts.optflag("h", "help", "Display this help");
-    let m = get_options(&opts, args).or_else(|| {
+    let m = get_options(&opts, &args).or_else(|| {
         print_command_usage(COMMAND_TEMPLATE, &opts);
         None
     })?;
@@ -78,10 +86,15 @@ fn get_template_action(args: &[String]) -> Option<Action> {
         return None;
     }
     if m.opt_present("l") {
-        return Some(Action::TemplatesList);
+        a.action = template_cli::Action::List;
     }
-    print_command_usage(COMMAND_TEMPLATE, &opts);
-    None
+    if m.opt_present("a") {
+        a.action = template_cli::Action::Add;
+    }
+    a.id = m.opt_str("i");
+    a.name = m.opt_str("n");
+    a.path = m.opt_str("p");
+    Some(Action::Template(a))
 }
 
 /**
@@ -117,10 +130,6 @@ fn get_action(args: &[String]) -> Option<Action> {
     }
 }
 
-fn template_list() {
-    println!("Not Implemented");
-}
-
 fn app_start() {
     server::start();
 }
@@ -130,7 +139,7 @@ fn main() {
     let action = get_action(&args[1..]);
     match action {
         Some(a) => match a {
-            Action::TemplatesList => template_list(),
+            Action::Template(args) => template_cli::run(args),
             Action::AppStart => app_start()
         },
         None => std::process::exit(1)
