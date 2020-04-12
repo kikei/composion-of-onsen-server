@@ -71,7 +71,7 @@ fn get_options(opts: &Options, args: &[String])
 fn get_template_action(args: &[String]) -> Option<Action> {
     let mut a = template_cli::Args::new();
     let mut opts = Options::new();
-    opts.optflag("l", "list", "List up all templates");
+    opts.optflag("s", "show", "Show all templates or one with given id");
     opts.optflag("a", "add", "Add or update a template");
     opts.optopt("i", "id", "Template id", "<template_id>");
     opts.optopt("n", "name", "Template name", "<name>");
@@ -85,8 +85,8 @@ fn get_template_action(args: &[String]) -> Option<Action> {
         print_command_usage(COMMAND_TEMPLATE, &opts);
         return None;
     }
-    if m.opt_present("l") {
-        a.action = template_cli::Action::List;
+    if m.opt_present("s") {
+        a.action = template_cli::Action::Show;
     }
     if m.opt_present("a") {
         a.action = template_cli::Action::Add;

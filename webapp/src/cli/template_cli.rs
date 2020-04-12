@@ -6,7 +6,7 @@ use crate::models::{self, Models};
 
 #[derive(Clone, Debug)]
 pub enum Action {
-    List,
+    Show,
     Add
 }
 
@@ -21,7 +21,7 @@ pub struct Args {
 impl Args {
     pub fn new() -> Self {
         Args {
-            action: Action::List,
+            action: Action::Show,
             id: None,
             name: None,
             path: None
@@ -29,14 +29,24 @@ impl Args {
     }
 }
 
-fn template_list(models: &Models, _args: &Args) {
-    match models::templates::select(&models) {
-        Ok(it) => for t in it {
-            println!("{}: {} ({})",
-                     &t.id.unwrap_or("none".to_string()),
-                     &t.name, &t.body.len());
+fn template_show(models: &Models, args: &Args) {
+    match &args.id {
+        Some(id) => match models::templates::by_id(&models, &id) {
+            Ok(Some(t)) => println!("{} {}\n{}",
+                                    &t.id.unwrap_or("none".to_string()),
+                                    &t.name, &t.body),
+            Ok(None) => println!("No matched"),
+            Err(e) =>
+                println!("Failed to read templates: {}, error: {}", &id, e)
         },
-        Err(e) => println!("Failed to read templates, error: {}", e)
+        None => match models::templates::select(&models) {
+            Ok(it) => for t in it {
+                println!("{}: {} ({})",
+                         &t.id.unwrap_or("none".to_string()),
+                         &t.name, &t.body.len());
+            },
+            Err(e) => println!("Failed to read templates, error: {}", e)
+        }
     }
 }
 
@@ -81,7 +91,7 @@ pub fn run(args: Args) {
     }
     let models = models::models(&db.unwrap());
     match args.action {
-        Action::List => template_list(&models, &args),
+        Action::Show => template_show(&models, &args),
         Action::Add => template_add(&models, &args)
     }
 }
