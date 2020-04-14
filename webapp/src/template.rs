@@ -141,7 +141,7 @@ fn lookup_html_formula(key: &str) -> &str {
         "HBO2" => "HBO<sub>2</sub>",
         "HCO3" => "HCO<sub>3</sub><sup>-</sup>",
         "HNO2" => "HNO<sub>2</sub><sup>-</sup>",
-        "HSiO3" => "HSiO<sub>3</sub>",
+        "HSiO3" => "HSiO<sub>3</sub><sup>-</sup>",
         "HPO4" => "HPO<sub>4</sub><sup>2-</sup>",
         "HS" => "HS<sup>-</sup>",
         "HSO4" => "HSO<sub>4</sub><sup>-</sup>",
