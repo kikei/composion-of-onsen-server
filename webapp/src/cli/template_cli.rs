@@ -1,35 +1,52 @@
 use std::fs;
+use structopt::StructOpt;
 
 use crate::template::{Template};
 use crate::utils::mongodb;
 use crate::models::{self, Models};
 
-#[derive(Clone, Debug)]
+#[derive(StructOpt, Debug)]
 pub enum Action {
-    Show,
-    Add
+    /// Show template
+    Show(ShowArgs),
+    /// Add template
+    Add(AddArgs)
 }
 
-#[derive(Debug)]
-pub struct Args {
-    pub action: Action,
+#[derive(StructOpt, Debug)]
+pub struct ShowArgs {
+    /// Template Id
+    #[structopt(short, long)]
     pub id: Option<String>,
+}
+
+#[derive(StructOpt, Debug)]
+pub struct AddArgs {
+    /// Template Id
+    #[structopt(short, long)]
+    pub id: Option<String>,
+
+    /// Template name
+    #[structopt(short, long)]
     pub name: Option<String>,
+
+    /// Path to template file
+    #[structopt(short, long)]
     pub path: Option<String>
 }
 
-impl Args {
-    pub fn new() -> Self {
-        Args {
-            action: Action::Show,
-            id: None,
-            name: None,
-            path: None
-        }
-    }
-}
+// impl Args {
+//     pub fn new() -> Self {
+//         Args {
+//             action: Action::Show,
+//             id: None,
+//             name: None,
+//             path: None
+//         }
+//     }
+// }
 
-fn template_show(models: &Models, args: &Args) {
+fn template_show(models: &Models, args: &ShowArgs) {
     match &args.id {
         Some(id) => match models::templates::by_id(&models, &id) {
             Ok(Some(t)) => println!("{} {}\n{}",
@@ -50,7 +67,7 @@ fn template_show(models: &Models, args: &Args) {
     }
 }
 
-fn template_add(models: &Models, args: &Args) {
+fn template_add(models: &Models, args: &AddArgs) {
     if args.path.is_none() {
         println!("Path required, args: {:?}", args);
         return;
@@ -79,7 +96,7 @@ fn template_add(models: &Models, args: &Args) {
     }
 }
 
-pub fn run(args: Args) {
+pub fn run(args: &Action) {
     // TODO Use setup_logger
     env_logger::init();
     info!("Log initialized.");
@@ -90,8 +107,8 @@ pub fn run(args: Args) {
         return;
     }
     let models = models::models(&db.unwrap());
-    match args.action {
-        Action::Show => template_show(&models, &args),
-        Action::Add => template_add(&models, &args)
+    match args {
+        Action::Show(args) => template_show(&models, &args),
+        Action::Add(args) => template_add(&models, &args)
     }
 }
