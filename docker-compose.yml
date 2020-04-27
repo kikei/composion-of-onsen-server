@@ -1,11 +1,17 @@
 version: "3.7"
 services:
   webapp:
-    build: ./webapp
+    build:
+      context: ./webapp
+      args:
+        UID: $UID
+        GID: $GID
+        UNAME: $UNAME
     volumes:
       - ./webapp:/usr/src/app
     ports:
       - "8088:8088"
+    user: $UID:$GID
     links:
       - mongodb
     depends_on:
