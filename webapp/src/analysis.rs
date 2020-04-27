@@ -102,7 +102,13 @@ pub struct Analysis {
 
     #[serde(rename = "totalMinor")]
     pub total_minor: MgMvalMmol,              // 微量成分計
-    
+
+    #[serde(rename = "totalMelt")]
+    pub total_melt: MgMvalMmol,               // 溶存物質量 (ガス性のものを除く)
+
+    #[serde(rename = "total")]
+    pub total: MgMvalMmol,                    // 成分総計
+
     #[serde(flatten)]
     pub meta: HashMap<String, String>,
 }

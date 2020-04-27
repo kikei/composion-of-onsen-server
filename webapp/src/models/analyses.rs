@@ -25,6 +25,8 @@ const KEY_TOTAL_NEGATIVE_ION: &str = "toni";
 const KEY_TOTAL_UNDISSOCIATED: &str = "toun";
 const KEY_TOTAL_GAS: &str = "toga";
 const KEY_TOTAL_MINOR: &str = "tomi";
+const KEY_TOTAL_MELT: &str = "tome";
+const KEY_TOTAL: &str = "totl";
 const KEY_MG: &str = "mg";
 const KEY_MVAL: &str = "mv";
 const KEY_MVAL_PERCENT: &str = "mvp";
@@ -109,6 +111,10 @@ impl TryFrom<&Document> for Analysis {
             document_mg_mval_mmol(item, KEY_TOTAL_GAS)?;
         let total_minor =
             document_mg_mval_mmol(item, KEY_TOTAL_MINOR)?;
+        let total_melt =
+            document_mg_mval_mmol(item, KEY_TOTAL_MELT)?;
+        let total =
+            document_mg_mval_mmol(item, KEY_TOTAL)?;
         let mut meta = HashMap::new();
         for (key, value) in item {
             match key.as_str() {
@@ -116,7 +122,8 @@ impl TryFrom<&Document> for Analysis {
                 KEY_POSITIVE_ION | KEY_NEGATIVE_ION |
                 KEY_UNDISSOCIATED | KEY_GAS | KEY_MINOR |
                 KEY_TOTAL_POSITIVE_ION | KEY_TOTAL_NEGATIVE_ION |
-                KEY_TOTAL_UNDISSOCIATED | KEY_TOTAL_GAS | KEY_TOTAL_MINOR => {},
+                KEY_TOTAL_UNDISSOCIATED | KEY_TOTAL_GAS | KEY_TOTAL_MINOR |
+                KEY_TOTAL_MELT | KEY_TOTAL => {},
                 _ => {
                     meta.insert(key.to_string(), match value.as_str() {
                         Some(v) => v.to_string(),
@@ -141,6 +148,8 @@ impl TryFrom<&Document> for Analysis {
             total_undissociated: total_undissociated,
             total_gas: total_gas,
             total_minor: total_minor,
+            total_melt: total_melt,
+            total: total,
             meta: meta
         })
     }
@@ -200,7 +209,11 @@ impl From<&Analysis> for Document {
             KEY_TOTAL_GAS:
             Bson::from(&item.total_gas),
             KEY_TOTAL_MINOR:
-            Bson::from(&item.total_minor)
+            Bson::from(&item.total_minor),
+            KEY_TOTAL_MELT:
+            Bson::from(&item.total_melt),
+            KEY_TOTAL:
+            Bson::from(&item.total)
         };
         for (key, value) in &item.meta {
             if !d.contains_key(&key) {
