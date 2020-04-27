@@ -20,9 +20,12 @@ ARG UNAME
 ENV UID $UID
 ENV GID $GID
 ENV UNAME $UNAME
+ENV DATADIR /mnt
 
 RUN groupadd -g $GID $UNAME
 RUN useradd -u $UID -g $UNAME -m $UNAME
+
+RUN chown $UID:$GID $DATADIR
 
 USER $UNAME
 
@@ -30,7 +33,10 @@ ENV HOME /home/$UNAME
 ENV CARGO_HOME /$HOME/.cargo
 ENV PATH $PATH:${CARGO_HOME}/bin
 
-# Cago setup
+# Mecab setup; make and install user dictionary
+RUN sh /usr/src/app/userdic.sh
+
+# Cargo setup
 
 # Following command will be permission error
 # as it tries to create target directory
