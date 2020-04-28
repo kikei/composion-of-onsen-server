@@ -9,12 +9,27 @@ use mecab::{Tagger, Node};
  * https://github.com/tsurai/mecab-rs/blob/master/src/mecab.rs
  */
 
+fn print_node(node: &Node) {
+    println!("fe: {}, rc: {}, lc: {}, po: {}, ct: {}, st: {}, be: {}, al: {}, be: {}, pr: {}, co: {}",
+             node.feature,
+             node.rcattr,
+             node.lcattr,
+             node.posid,
+             node.char_type,
+             node.stat,
+             node.isbest,
+             node.alpha,
+             node.beta,
+             node.prob,
+             node.cost);
+}
+
 fn node_to_yomi(node: &Node) -> String {
     /*
      * 0: 品詞, 1: 品詞細分類1, 2: 品詞細分類2, 3: 品詞細分類3,
      * 4: 活用型, 5: 活用形, 6: 原形, 7: 読み, 8: 発音
      */
-    println!("node");
+    // print_node(&node);
     String::from(match node.stat as i32 {
         mecab::MECAB_BOS_NODE => "",
         mecab::MECAB_EOS_NODE => "",
@@ -23,20 +38,20 @@ fn node_to_yomi(node: &Node) -> String {
             let parts: Vec<&str> = feature.split(',').collect();
             println!("parts: {:?}", &parts);
             match parts {
-                _ if parts.len() <= 7 || parts[7] == "" =>
+                _ if parts.len() <= 6 || parts[6] == "" =>
                     &node.surface[..node.length as usize],
-                _ => parts[7]
+                _ => parts[6]
             }
         }
     })
 }
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone)]
 enum Pron {
-    Single(&'static str),
-    Sokuon(&'static str),
-    Others(&'static str),
-    Hatsuon(&'static str)
+    Single(String),
+    Sokuon(String),
+    Others(String),
+    Hatsuon(String)
 }
 
 struct KatakanaAlphabet {
@@ -105,11 +120,23 @@ fn tokenize_katakana(text: &String) -> Vec<Pron> {
         v.push(match t {
             Some(ka) => {
                 i += ka.katakana.len();
-                ka.alphabet
+                ka.alphabet.clone()
             },
             None => {
-                i += first_char(&text[i..]).map_or(3, |c| c.to_string().len());
-                Pron::Others("-")
+                match first_char(&text[i..]) {
+                    Some(c) => {
+                        i += c.to_string().len();
+                        if c.is_alphanumeric() {
+                            Pron::Single(c.to_string())
+                        } else {
+                            Pron::Others("-".to_string())
+                        }
+                    },
+                    None => {
+                        i += 3;
+                        Pron::Others("-".to_string())
+                    }
+                }
             }
         })
     }
@@ -129,7 +156,7 @@ fn katakana_yomis(pron: Vec<Pron>) -> Vec<String> {
             },
             Some(Pron::Sokuon(s0)) => match p {
                 Pron::Single(s1) => {
-                    v.push(alpha_to_sokuon(s1));
+                    v.push(alpha_to_sokuon(&s1.as_str()));
                     last = None;
                 },
                 Pron::Others(s1) => {
@@ -151,136 +178,136 @@ fn katakana_yomis(pron: Vec<Pron>) -> Vec<String> {
 
 fn katakana_alphabet_map() -> Vec<KatakanaAlphabet> {
     let map = vec![
-        ("ウィ", Pron::Single("wi")),
-        ("ウェ", Pron::Single("we")),
-        ("キャ", Pron::Single("kya")),
-        ("キュ", Pron::Single("kyu")),
-        ("キョ", Pron::Single("kyo")),
-        ("シャ", Pron::Single("sha")),
-        ("シュ", Pron::Single("shu")),
-        ("ショ", Pron::Single("sho")),
-        ("チャ", Pron::Single("cha")),
-        ("チュ", Pron::Single("chu")),
-        ("チェ", Pron::Single("che")),
-        ("チョ", Pron::Single("cho")),
-        ("ニャ", Pron::Single("nya")),
-        ("ニュ", Pron::Single("nyu")),
-        ("ニョ", Pron::Single("nyo")),
-        ("ヒャ", Pron::Single("hya")),
-        ("ヒュ", Pron::Single("hyu")),
-        ("ヒョ", Pron::Single("hyo")),
-        ("ミャ", Pron::Single("mya")),
-        ("ミュ", Pron::Single("myu")),
-        ("ミョ", Pron::Single("myo")),
-        ("リャ", Pron::Single("rya")),
-        ("リュ", Pron::Single("ryu")),
-        ("リョ", Pron::Single("ryo")),
-        ("ヴァ", Pron::Single("va")),
-        ("ヴィ", Pron::Single("vi")),
-        ("ヴェ", Pron::Single("ve")),
-        ("ヴォ", Pron::Single("vo")),
-        ("ギャ", Pron::Single("gya")),
-        ("ギュ", Pron::Single("gyu")),
-        ("ギョ", Pron::Single("gya")),
-        ("ジャ", Pron::Single("ja")),
-        ("ジュ", Pron::Single("ju")),
-        ("ジェ", Pron::Single("je")),
-        ("ジョ", Pron::Single("jo")),
-        ("ヂャ", Pron::Single("dya")),
-        ("ヂュ", Pron::Single("dyu")),
-        ("ヂェ", Pron::Single("dye")),
-        ("ヂョ", Pron::Single("dyo")),
-        ("ビャ", Pron::Single("bya")),
-        ("ビュ", Pron::Single("byu")),
-        ("ビェ", Pron::Single("bye")),
-        ("ビョ", Pron::Single("byo")),
-        ("ア", Pron::Single("a")),
-        ("イ", Pron::Single("i")),
-        ("ウ", Pron::Single("u")),
-        ("エ", Pron::Single("e")),
-        ("オ", Pron::Single("o")),
-        ("カ", Pron::Single("ka")),
-        ("キ", Pron::Single("ki")),
-        ("ク", Pron::Single("ku")),
-        ("ケ", Pron::Single("ke")),
-        ("コ", Pron::Single("ko")),
-        ("サ", Pron::Single("sa")),
-        ("シ", Pron::Single("si")),
-        ("ス", Pron::Single("su")),
-        ("セ", Pron::Single("se")),
-        ("ソ", Pron::Single("so")),
-        ("タ", Pron::Single("ta")),
-        ("チ", Pron::Single("chi")),
-        ("ツ", Pron::Single("tsu")),
-        ("テ", Pron::Single("te")),
-        ("ト", Pron::Single("to")),
-        ("ナ", Pron::Single("na")),
-        ("ニ", Pron::Single("ni")),
-        ("ヌ", Pron::Single("nu")),
-        ("ネ", Pron::Single("ne")),
-        ("ノ", Pron::Single("no")),
-        ("ハ", Pron::Single("ha")),
-        ("ヒ", Pron::Single("hi")),
-        ("フ", Pron::Single("fu")),
-        ("ヘ", Pron::Single("he")),
-        ("ホ", Pron::Single("ho")),
-        ("マ", Pron::Single("ma")),
-        ("ミ", Pron::Single("mi")),
-        ("ム", Pron::Single("mu")),
-        ("メ", Pron::Single("me")),
-        ("モ", Pron::Single("mo")),
-        ("ヤ", Pron::Single("ya")),
-        ("ユ", Pron::Single("yu")),
-        ("ヨ", Pron::Single("yo")),
-        ("ラ", Pron::Single("ra")),
-        ("リ", Pron::Single("ri")),
-        ("ル", Pron::Single("ru")),
-        ("レ", Pron::Single("re")),
-        ("ロ", Pron::Single("ro")),
-        ("ワ", Pron::Single("wa")),
-        ("ヲ", Pron::Single("wo")),
-        ("ガ", Pron::Single("ga")),
-        ("ギ", Pron::Single("gi")),
-        ("グ", Pron::Single("gu")),
-        ("ゲ", Pron::Single("ge")),
-        ("ゴ", Pron::Single("go")),
-        ("ザ", Pron::Single("za")),
-        ("ジ", Pron::Single("ji")),
-        ("ズ", Pron::Single("zu")),
-        ("ゼ", Pron::Single("ze")),
-        ("ゾ", Pron::Single("zo")),
-        ("ダ", Pron::Single("da")),
-        ("ヂ", Pron::Single("di")),
-        ("ヅ", Pron::Single("du")),
-        ("デ", Pron::Single("de")),
-        ("ド", Pron::Single("do")),
-        ("バ", Pron::Single("ba")),
-        ("ビ", Pron::Single("bi")),
-        ("ブ", Pron::Single("bu")),
-        ("ベ", Pron::Single("be")),
-        ("ボ", Pron::Single("bo")),
-        ("パ", Pron::Single("pa")),
-        ("ピ", Pron::Single("pi")),
-        ("プ", Pron::Single("pu")),
-        ("ペ", Pron::Single("pe")),
-        ("ポ", Pron::Single("po")),
-        ("ー", Pron::Others("-")),
-        ("ン", Pron::Hatsuon("n")),
-        ("ッ", Pron::Sokuon("xtu")),
-        ("0", Pron::Others("0")),
-        ("1", Pron::Others("1")),
-        ("2", Pron::Others("2")),
-        ("3", Pron::Others("3")),
-        ("4", Pron::Others("4")),
-        ("5", Pron::Others("5")),
-        ("6", Pron::Others("6")),
-        ("7", Pron::Others("7")),
-        ("8", Pron::Others("8")),
-        ("9", Pron::Others("9")),
+        ("ウィ", Pron::Single("wi".to_string())),
+        ("ウェ", Pron::Single("we".to_string())),
+        ("キャ", Pron::Single("kya".to_string())),
+        ("キュ", Pron::Single("kyu".to_string())),
+        ("キョ", Pron::Single("kyo".to_string())),
+        ("シャ", Pron::Single("sha".to_string())),
+        ("シュ", Pron::Single("shu".to_string())),
+        ("ショ", Pron::Single("sho".to_string())),
+        ("チャ", Pron::Single("cha".to_string())),
+        ("チュ", Pron::Single("chu".to_string())),
+        ("チェ", Pron::Single("che".to_string())),
+        ("チョ", Pron::Single("cho".to_string())),
+        ("ニャ", Pron::Single("nya".to_string())),
+        ("ニュ", Pron::Single("nyu".to_string())),
+        ("ニョ", Pron::Single("nyo".to_string())),
+        ("ヒャ", Pron::Single("hya".to_string())),
+        ("ヒュ", Pron::Single("hyu".to_string())),
+        ("ヒョ", Pron::Single("hyo".to_string())),
+        ("ミャ", Pron::Single("mya".to_string())),
+        ("ミュ", Pron::Single("myu".to_string())),
+        ("ミョ", Pron::Single("myo".to_string())),
+        ("リャ", Pron::Single("rya".to_string())),
+        ("リュ", Pron::Single("ryu".to_string())),
+        ("リョ", Pron::Single("ryo".to_string())),
+        ("ヴァ", Pron::Single("va".to_string())),
+        ("ヴィ", Pron::Single("vi".to_string())),
+        ("ヴェ", Pron::Single("ve".to_string())),
+        ("ヴォ", Pron::Single("vo".to_string())),
+        ("ギャ", Pron::Single("gya".to_string())),
+        ("ギュ", Pron::Single("gyu".to_string())),
+        ("ギョ", Pron::Single("gya".to_string())),
+        ("ジャ", Pron::Single("ja".to_string())),
+        ("ジュ", Pron::Single("ju".to_string())),
+        ("ジェ", Pron::Single("je".to_string())),
+        ("ジョ", Pron::Single("jo".to_string())),
+        ("ヂャ", Pron::Single("dya".to_string())),
+        ("ヂュ", Pron::Single("dyu".to_string())),
+        ("ヂェ", Pron::Single("dye".to_string())),
+        ("ヂョ", Pron::Single("dyo".to_string())),
+        ("ビャ", Pron::Single("bya".to_string())),
+        ("ビュ", Pron::Single("byu".to_string())),
+        ("ビェ", Pron::Single("bye".to_string())),
+        ("ビョ", Pron::Single("byo".to_string())),
+        ("ア", Pron::Single("a".to_string())),
+        ("イ", Pron::Single("i".to_string())),
+        ("ウ", Pron::Single("u".to_string())),
+        ("エ", Pron::Single("e".to_string())),
+        ("オ", Pron::Single("o".to_string())),
+        ("カ", Pron::Single("ka".to_string())),
+        ("キ", Pron::Single("ki".to_string())),
+        ("ク", Pron::Single("ku".to_string())),
+        ("ケ", Pron::Single("ke".to_string())),
+        ("コ", Pron::Single("ko".to_string())),
+        ("サ", Pron::Single("sa".to_string())),
+        ("シ", Pron::Single("si".to_string())),
+        ("ス", Pron::Single("su".to_string())),
+        ("セ", Pron::Single("se".to_string())),
+        ("ソ", Pron::Single("so".to_string())),
+        ("タ", Pron::Single("ta".to_string())),
+        ("チ", Pron::Single("chi".to_string())),
+        ("ツ", Pron::Single("tsu".to_string())),
+        ("テ", Pron::Single("te".to_string())),
+        ("ト", Pron::Single("to".to_string())),
+        ("ナ", Pron::Single("na".to_string())),
+        ("ニ", Pron::Single("ni".to_string())),
+        ("ヌ", Pron::Single("nu".to_string())),
+        ("ネ", Pron::Single("ne".to_string())),
+        ("ノ", Pron::Single("no".to_string())),
+        ("ハ", Pron::Single("ha".to_string())),
+        ("ヒ", Pron::Single("hi".to_string())),
+        ("フ", Pron::Single("fu".to_string())),
+        ("ヘ", Pron::Single("he".to_string())),
+        ("ホ", Pron::Single("ho".to_string())),
+        ("マ", Pron::Single("ma".to_string())),
+        ("ミ", Pron::Single("mi".to_string())),
+        ("ム", Pron::Single("mu".to_string())),
+        ("メ", Pron::Single("me".to_string())),
+        ("モ", Pron::Single("mo".to_string())),
+        ("ヤ", Pron::Single("ya".to_string())),
+        ("ユ", Pron::Single("yu".to_string())),
+        ("ヨ", Pron::Single("yo".to_string())),
+        ("ラ", Pron::Single("ra".to_string())),
+        ("リ", Pron::Single("ri".to_string())),
+        ("ル", Pron::Single("ru".to_string())),
+        ("レ", Pron::Single("re".to_string())),
+        ("ロ", Pron::Single("ro".to_string())),
+        ("ワ", Pron::Single("wa".to_string())),
+        ("ヲ", Pron::Single("wo".to_string())),
+        ("ガ", Pron::Single("ga".to_string())),
+        ("ギ", Pron::Single("gi".to_string())),
+        ("グ", Pron::Single("gu".to_string())),
+        ("ゲ", Pron::Single("ge".to_string())),
+        ("ゴ", Pron::Single("go".to_string())),
+        ("ザ", Pron::Single("za".to_string())),
+        ("ジ", Pron::Single("ji".to_string())),
+        ("ズ", Pron::Single("zu".to_string())),
+        ("ゼ", Pron::Single("ze".to_string())),
+        ("ゾ", Pron::Single("zo".to_string())),
+        ("ダ", Pron::Single("da".to_string())),
+        ("ヂ", Pron::Single("di".to_string())),
+        ("ヅ", Pron::Single("du".to_string())),
+        ("デ", Pron::Single("de".to_string())),
+        ("ド", Pron::Single("do".to_string())),
+        ("バ", Pron::Single("ba".to_string())),
+        ("ビ", Pron::Single("bi".to_string())),
+        ("ブ", Pron::Single("bu".to_string())),
+        ("ベ", Pron::Single("be".to_string())),
+        ("ボ", Pron::Single("bo".to_string())),
+        ("パ", Pron::Single("pa".to_string())),
+        ("ピ", Pron::Single("pi".to_string())),
+        ("プ", Pron::Single("pu".to_string())),
+        ("ペ", Pron::Single("pe".to_string())),
+        ("ポ", Pron::Single("po".to_string())),
+        ("ー", Pron::Others("-".to_string())),
+        ("ン", Pron::Hatsuon("n".to_string())),
+        ("ッ", Pron::Sokuon("xtu".to_string())),
+        ("0", Pron::Others("0".to_string())),
+        ("1", Pron::Others("1".to_string())),
+        ("2", Pron::Others("2".to_string())),
+        ("3", Pron::Others("3".to_string())),
+        ("4", Pron::Others("4".to_string())),
+        ("5", Pron::Others("5".to_string())),
+        ("6", Pron::Others("6".to_string())),
+        ("7", Pron::Others("7".to_string())),
+        ("8", Pron::Others("8".to_string())),
+        ("9", Pron::Others("9".to_string()))
     ];
     let v =
         map.iter()
-        .map(|(k, a)| KatakanaAlphabet { katakana: k, alphabet: *a })
+        .map(|(k, a)| KatakanaAlphabet { katakana: k, alphabet: a.clone() })
         .collect::<Vec<KatakanaAlphabet>>();
     v
 }
