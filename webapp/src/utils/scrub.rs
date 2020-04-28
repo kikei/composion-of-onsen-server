@@ -127,7 +127,7 @@ fn tokenize_katakana(text: &String) -> Vec<Pron> {
                     Some(c) => {
                         i += c.to_string().len();
                         if c.is_alphanumeric() {
-                            Pron::Single(c.to_string())
+                            Pron::Single(c.to_lowercase().collect())
                         } else {
                             Pron::Others("-".to_string())
                         }
