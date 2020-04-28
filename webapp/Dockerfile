@@ -1,16 +1,20 @@
 FROM rust:1.38
 
+ENV DICDIR=/var/lib/mecab/dic/mydic
+
 COPY . /usr/src/app
 
 # Sometimes target causes error
 RUN rm -rf /usr/src/app/target
 
 VOLUME /usr/src/app
+VOLUME $DICDIR
+
 WORKDIR /usr/src/app
 
 # Install dependencies
-RUN apt-get update
-RUN apt-get install -y mecab libmecab-dev mecab-ipadic-utf8 git curl xz-utils file
+RUN apt-get update && apt-get install -y \
+  mecab libmecab-dev
 
 # User setup
 ARG UID
@@ -33,8 +37,9 @@ ENV HOME /home/$UNAME
 ENV CARGO_HOME /$HOME/.cargo
 ENV PATH $PATH:${CARGO_HOME}/bin
 
-# Mecab setup; make and install user dictionary
-RUN sh /usr/src/app/userdic.sh
+# Mecab setup; use mydic
+RUN grep -v dicdir /etc/mecabrc > ~/.mecabrc
+RUN echo "dicdir = $DICDIR" >> ~/.mecabrc
 
 # Cargo setup
 

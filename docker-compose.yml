@@ -1,5 +1,10 @@
 version: "3.7"
 services:
+  mydict:
+    build: ./docker/mydict
+    volumes:
+      - dict-volume:/var/lib/mecab/dic/mydic
+    tty: true
   webapp:
     build:
       context: ./webapp
@@ -9,6 +14,7 @@ services:
         UNAME: $UNAME
     volumes:
       - ./webapp:/usr/src/app
+      - dict-volume:/var/lib/mecab/dic/mydic
     ports:
       - "8088:8088"
     user: $UID:$GID
@@ -44,4 +50,6 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: admin
       ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME}
       ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD}
+volumes:
+  dict-volume:
 
