@@ -36,8 +36,10 @@ fn node_to_yomi(node: &Node) -> String {
         _ => {
             let feature = &node.feature;
             let parts: Vec<&str> = feature.split(',').collect();
-            println!("parts: {:?}", &parts);
+            println!("surface: {:?}, parts: {:?}", &node.surface, &parts);
             match parts {
+                _ if parts.len() >= 1 && parts[1] == "数詞" =>
+                    &node.surface[..node.length as usize],
                 _ if parts.len() <= 6 || parts[6] == "" =>
                     &node.surface[..node.length as usize],
                 _ => parts[6]
