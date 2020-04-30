@@ -7,6 +7,7 @@ services:
   webapp:
     build:
       context: ./webapp
+      dockerfile: ../docker/webapp/Dockerfile
       args:
         UID: $UID
         GID: $GID
@@ -33,14 +34,12 @@ services:
       RUST_LOG: debug
     entrypoint: /bin/bash
     command: "-i"
-    #entrypoint: systemfd
-    #command: "--no-pid -s http::0.0.0.0:8088 -- cargo watch -x 'run app'"
     tty: true
   mongodb:
     image: mongo:4
     volumes:
       - ./data/mongodb:/data/db
-      - ./mongodb:/docker-entrypoint-initdb.d
+      - ./docker/mongodb:/docker-entrypoint-initdb.d
     restart: always
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
