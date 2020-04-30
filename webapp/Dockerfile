@@ -1,5 +1,13 @@
 FROM rust:1.38
 
+ARG UID
+ARG GID
+ARG UNAME
+
+ENV UID $UID
+ENV GID $GID
+ENV UNAME $UNAME
+ENV DATADIR /mnt
 ENV DICDIR=/var/lib/mecab/dic/mydic
 
 COPY . /usr/src/app
@@ -17,19 +25,8 @@ RUN apt-get update && apt-get install -y \
   mecab libmecab-dev
 
 # User setup
-ARG UID
-ARG GID
-ARG UNAME
-
-ENV UID $UID
-ENV GID $GID
-ENV UNAME $UNAME
-ENV DATADIR /mnt
-
 RUN groupadd -g $GID $UNAME
 RUN useradd -u $UID -g $UNAME -m $UNAME
-
-RUN chown $UID:$GID $DATADIR
 
 USER $UNAME
 
@@ -51,8 +48,4 @@ RUN echo "dicdir = $DICDIR" >> ~/.mecabrc
 RUN cp -a /usr/src/app $HOME
 RUN cd $HOME/app && cargo install --path .
 
-
-# Start application server
-# RUN systemfd --no-pid -s http::0.0.0.0:8088 -- cargo watch -x 'run app'
-#RUN cargo install systemfd cargo-watch
-#CMD systemfd --no-pid -s http::0.0.0.0:8088 -- cargo watch -x 'run app'
+ENTRYPOINT ["cargo", "run", "--release"]
