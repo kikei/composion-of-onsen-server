@@ -9,6 +9,7 @@ use mecab::{Tagger, Node};
  * https://github.com/tsurai/mecab-rs/blob/master/src/mecab.rs
  */
 
+#[allow(dead_code)]
 fn print_node(node: &Node) {
     println!("fe: {}, rc: {}, lc: {}, po: {}, ct: {}, st: {}, be: {}, al: {}, be: {}, pr: {}, co: {}",
              node.feature,
