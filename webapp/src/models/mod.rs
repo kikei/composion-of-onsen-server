@@ -4,7 +4,7 @@ pub mod templates;
 use r2d2_mongodb::mongodb::{bson, doc};
 use r2d2_mongodb::mongodb::db::{Database, ThreadedDatabase};
 use r2d2_mongodb::mongodb::coll::Collection;
-// use r2d2_mongodb::mongodb::coll::options::IndexModel;
+use r2d2_mongodb::mongodb::coll::options::IndexOptions;
 
 static COLLECTION_ANALYSES: &str = "analyses";
 static COLLECTION_TEMPLATES: &str = "templates";
@@ -19,12 +19,18 @@ pub fn models(db: &Database) -> Models {
     let templates = db.collection(COLLECTION_TEMPLATES);
     // Ensure index for analyses
     let keys = doc!{ "id": -1 };
-    if let Err(e) = &analyses.create_index(keys, None) {
+    if let Err(e) = &analyses.create_index(keys, Some(IndexOptions {
+        unique: Some(true),
+        ..Default::default()
+    })) {
         println!("Failed to create index: {}", e) 
     }
     // Ensure index for templates
     let keys = doc!{ "id": -1 };
-    if let Err(e) = &templates.create_index(keys, None) {
+    if let Err(e) = &templates.create_index(keys, Some(IndexOptions {
+        unique: Some(true),
+        ..Default::default()
+    })) {
         println!("Failed to create index: {}", e) 
     }
     Models {
