@@ -3,7 +3,6 @@ use std::convert::TryFrom;
 
 use r2d2_mongodb::mongodb::{self, bson, Bson, doc, Document};
 use r2d2_mongodb::mongodb::coll::Collection;
-use r2d2_mongodb::mongodb::coll::options::ReplaceOptions;
 
 use crate::analysis::{Analysis, ComponentTable, CellValue, MgMvalMmol};
 use crate::models::{Models, collection_analyses};
@@ -309,38 +308,73 @@ pub fn by_id(models: &Models, id: &String) -> Result<Option<Analysis>, String>
 
 pub fn save(models: &Models, a: &Analysis) -> Result<Analysis, String> {
     let coll = collection_analyses(models);
-    let options = ReplaceOptions {
-        upsert: Some(true),
-        ..Default::default()
-    };
-    let id = match &a.id {
-        Some(id) => id.to_string(),
-        None => new_id(a)
+    let (id, is_new) = match &a.id {
+        Some(id) => (id.to_string(), false),
+        None => match create_unique_id(models, a) {
+            Ok(id) => (id, true),
+            Err(e) => return Err(e)
+        }
     };
     // Clone analysis
     let mut a: Analysis = a.clone();
     a.id = Some(id.to_string());
     let filter = doc!{ KEY_ID: &id };
     let d = Document::from(&a);
-    println!("analyses::save, fileter: {:?}, d: {:?}", filter, d);
-    let result = coll.replace_one(filter, d, Some(options));
-    /*
-    let result = coll.replace_one(filter,
-                                  Document::from(&a), /* replacement */
-                                  Some(options));
-    */
-    println!("analyses::save, result: {:?}", &result);
+    debug!("analyses::save, is_new: {}, fileter: {:?}, d: {:?}",
+           &is_new, &filter, &d);
+    let result = if is_new {
+        coll.insert_one(d, None)
+            .map(|r| {
+                debug!("analyses::save, created, result: {:?}", &r);
+                Some(a)
+            })
+    } else {
+        coll.replace_one(filter, d, None)
+            .map(|r| {
+                debug!("analyses::save, updated, result: {:?}", &r);
+                if r.modified_count > 0 {
+                    Some(a)
+                } else {
+                    None
+                }
+            })
+    };
     match result {
-        Ok(_) => Ok(a),
+        Ok(Some(a)) => Ok(a),
+        Ok(None) => Err(String::from(format!("unexpected result in
+                                             analyses::save"))),
         Err(e) => Err(String::from(format!("{}", e)))
     }
 }
 
-fn new_id(a: &Analysis) -> String {
-    // TODO ensure uniqueness
-    scrub::scrub(&a.name)
+const MAX_ID_SERIAL: usize = 99;
+
+pub fn create_unique_id(models: &Models, a: &Analysis)
+                        -> Result<String, String> {
+    let coll: &Collection = collection_analyses(models);
+    let base = new_id(a);
+    let mut i = 0;
+    loop {
+        if i > MAX_ID_SERIAL {
+            break Err(format!("Cannot create unique id, base: {}, i: {}",
+                              &base, &i));
+        }
+        let tryid = if i == 0 {
+            base.clone()
+        } else {
+            format!("{}-{}", &base, i)
+        };
+        match coll.find_one(Some(doc!{ KEY_ID: &tryid }), None) {
+            Ok(Some(_)) => i += 1,
+            Ok(None) => break Ok(tryid),
+            Err(e) => break Err(format!("Cannot create uniquid id, e: {}", e))
+        }
+    }
 }
 
+fn new_id(a: &Analysis) -> String {
+    scrub::scrub(&a.name)
+}
 
 #[cfg(test)]
 mod tests {
