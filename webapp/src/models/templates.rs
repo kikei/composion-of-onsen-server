@@ -1,23 +1,11 @@
 use r2d2_mongodb::mongodb::{bson, Bson, doc, Document};
-use r2d2_mongodb::mongodb::oid::ObjectId;
 use r2d2_mongodb::mongodb::coll::Collection;
 use r2d2_mongodb::mongodb::coll::options::ReplaceOptions;
 
 use crate::models::{Models, collection_templates};
 use crate::template;
 use crate::template::{Template};
-use crate::utils::mongodb::{document_str};
-
-// Helper to make Bson::ObjectId
-fn object_id(id: &Option<String>) -> Option<Bson> {
-    match id {
-        Some(id) => match ObjectId::with_string(id) {
-            Ok(id) => Some(Bson::ObjectId(id)),
-            Err(_) => None
-        },
-        None => Some(Bson::Null)
-    }
-}
+use crate::utils::mongodb::{object_id, document_str};
 
 impl From<&Document> for Template {
     fn from(item: &Document) -> Self {
