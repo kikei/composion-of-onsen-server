@@ -60,6 +60,15 @@ services:
       ME_CONFIG_MONGODB_ADMINPASSWORD: admin
       ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME}
       ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD}
+  nginx:
+    image: nginx:1-alpine
+    ports:
+      - "8080:80"
+    links:
+      - webapp
+      - fluentd
+    volumes:
+      - ./docker/nginx/conf:/etc/nginx/conf.d
   fluentd:
     build: ./docker/fluentd
     volumes:
