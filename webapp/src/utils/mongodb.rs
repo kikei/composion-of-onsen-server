@@ -22,6 +22,8 @@ pub fn create_pool() -> DBConnectionPool {
             .build());
     let pool = Pool::builder()
         .max_size(2)
+        .idle_timeout(None)
+        .max_lifetime(None)
         .build(manager)
         .unwrap();
     pool
