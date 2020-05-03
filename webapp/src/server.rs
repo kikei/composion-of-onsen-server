@@ -45,28 +45,42 @@ fn add_analysis(json: web::Json<Analysis>,
     println!("Start add_analysis");
     let db = pool.get().unwrap();
     let models = models::models(&db);
-    let a = models::analyses::save(&models, &json.into_inner());
-    match a {
-        Ok(a) => HttpResponse::Ok().json(a),
-        Err(_) => HttpResponse::Forbidden().finish() // TODO forbidden?
+    let a = &json.into_inner();
+    match a.id {
+        None => {
+            // add_analysis is allowed when id is None
+            let a = models::analyses::save(&models, &a);
+            match a {
+                Ok(a) => HttpResponse::Ok().json(a),
+                Err(_) => HttpResponse::Forbidden().finish()
+            }
+        },
+        Some(_) => HttpResponse::Forbidden().finish()
     }
 }
 
-/*
-fn post_analysis(body: web::Payload,
-                 pool: web::Data<DBConnectionPool>)
-                 -> impl Future<Item = HttpResponse, Error = actix_web::Error> {
-    async_json(body).and_then(|res| {
-        match res {
-            Ok(v) => {
-                let a = Analysis::from(&v);
-                HttpResponse::Ok().json(a)
-            },
-            Err(e) => HttpResponse::BadRequest().body(format!("{}", &e))
-        }
-    })
+fn update_analysis(info: web::Path<AnalysisPath>,
+                   json: web::Json<Analysis>,
+                   pool: web::Data<DBConnectionPool>)
+                   -> impl Responder {
+    println!("Start add_analysis");
+    let db = pool.get().unwrap();
+    let models = models::models(&db);
+    let a = &json.into_inner();
+    match &a.id {
+        Some(id) if id.clone() == info.id => {
+            // update_analysis is allowed when id matches with path
+            let a = models::analyses::save(&models, &a);
+            match a {
+                Ok(a) => HttpResponse::Ok().json(a),
+                Err(_) => HttpResponse::Forbidden().finish()
+            }
+        },
+        _ => HttpResponse::Forbidden().finish()
+    }
 }
- */
+
+
 
 fn list_analysis(pool: web::Data<DBConnectionPool>) -> impl Responder {
     let db = pool.get().unwrap();
@@ -204,7 +218,8 @@ pub fn start() {
             .route("/", web::get().to(index))
             .service(
                 web::scope("/analysis")
-                    .route("/", web::post().to(add_analysis))
+                    .route("/", web::put().to(add_analysis))
+                    .route("/{id}", web::post().to(update_analysis))
                     .route("/", web::get().to(list_analysis))
                     .route("/{id}", web::get().to(get_analysis))
             )
