@@ -17,20 +17,21 @@ pub struct Models {
 pub fn models(db: &Database) -> Models {
     let analyses = db.collection(COLLECTION_ANALYSES);
     let templates = db.collection(COLLECTION_TEMPLATES);
-    // Ensure index for analyses
-    let keys = doc!{ "id": -1 };
-    if let Err(e) = &analyses.create_index(keys, Some(IndexOptions {
-        unique: Some(true),
-        ..Default::default()
-    })) {
-        println!("Failed to create index: {}", e) 
-    }
-    // Ensure index for templates
-    let keys = doc!{ "id": -1 };
-    if let Err(e) = &templates.create_index(keys, Some(IndexOptions {
-        unique: Some(true),
-        ..Default::default()
-    })) {
+    if let Err(e) = {
+        // Ensure index for analyses
+        analyses.create_index(doc! { "id": -1 }, Some(IndexOptions {
+            unique: Some(true), ..Default::default()
+        })).and(
+            analyses.create_index(doc! { "_lamo": -1 }, Some(IndexOptions {
+                unique: Some(false), ..Default::default()
+            }))
+        ).and(
+            // Ensure index for templates
+            templates.create_index(doc! { "id": -1 }, Some(IndexOptions {
+                unique: Some(true), ..Default::default()
+            }))
+        )
+    } {
         println!("Failed to create index: {}", e) 
     }
     Models {
