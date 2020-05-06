@@ -1,8 +1,11 @@
 use std::collections::HashMap;
 use std::convert::TryFrom;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use r2d2_mongodb::mongodb::{self, bson, Bson, doc, Document};
 use r2d2_mongodb::mongodb::coll::Collection;
+use r2d2_mongodb::mongodb::coll::options::{FindOptions};
+use serde::Deserialize;
 
 use crate::analysis::{Analysis, ComponentTable, CellValue, MgMvalMmol};
 use crate::models::{Models, collection_analyses};
@@ -30,6 +33,8 @@ const KEY_MG: &str = "mg";
 const KEY_MVAL: &str = "mv";
 const KEY_MVAL_PERCENT: &str = "mvp";
 const KEY_MMOL: &str = "mm";
+const KEY_LAST_MODIFIED: &str = "_lamo";
+const KEY_CREATED_AT: &str = "_crat";
 
 /**
  * Conversions from MongoDB object to Analysis.
@@ -122,7 +127,8 @@ impl TryFrom<&Document> for Analysis {
                 KEY_UNDISSOCIATED | KEY_GAS | KEY_MINOR |
                 KEY_TOTAL_POSITIVE_ION | KEY_TOTAL_NEGATIVE_ION |
                 KEY_TOTAL_UNDISSOCIATED | KEY_TOTAL_GAS | KEY_TOTAL_MINOR |
-                KEY_TOTAL_MELT | KEY_TOTAL => {},
+                KEY_TOTAL_MELT | KEY_TOTAL |
+                KEY_LAST_MODIFIED | KEY_CREATED_AT => {},
                 _ => {
                     meta.insert(key.to_string(), match value.as_str() {
                         Some(v) => v.to_string(),
@@ -131,6 +137,10 @@ impl TryFrom<&Document> for Analysis {
                 }
             }
         }
+        let last_modified =
+            document_number(item, KEY_LAST_MODIFIED).map(|f| f as f64);
+        let created_at =
+            document_number(item, KEY_CREATED_AT).map(|f| f as f64);
         Ok(Analysis {
             id: Some(id),
             name: name,
@@ -149,7 +159,9 @@ impl TryFrom<&Document> for Analysis {
             total_minor: total_minor,
             total_melt: total_melt,
             total: total,
-            meta: meta
+            meta: meta,
+            last_modified: last_modified,
+            created_at: created_at
         })
     }
 }
@@ -212,7 +224,11 @@ impl From<&Analysis> for Document {
             KEY_TOTAL_MELT:
             Bson::from(&item.total_melt),
             KEY_TOTAL:
-            Bson::from(&item.total)
+            Bson::from(&item.total),
+            KEY_CREATED_AT: item
+                .created_at.map_or(Bson::Null, Bson::from),
+            KEY_LAST_MODIFIED: item
+                .last_modified.map_or(Bson::Null, Bson::from)
         };
         for (key, value) in &item.meta {
             if !d.contains_key(&key) {
@@ -317,7 +333,19 @@ pub fn save(models: &Models, a: &Analysis) -> Result<Analysis, String> {
     };
     // Clone analysis
     let mut a: Analysis = a.clone();
+    // Update id
     a.id = Some(id.to_string());
+    // Update created_at if needed
+    let epoch = SystemTime::now().duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs_f64())
+        .unwrap_or_else(|e| {
+            warn!("Failed to calulate epoch!? {}", &e);
+            0.0
+        });
+    a.created_at = a.created_at.or(Some(epoch));
+    // Update last_modified
+    a.last_modified = Some(epoch);
+    // Write to DB
     let filter = doc!{ KEY_ID: &id };
     let d = Document::from(&a);
     debug!("analyses::save, is_new: {}, fileter: {:?}, d: {:?}",
