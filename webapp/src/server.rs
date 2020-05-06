@@ -4,7 +4,7 @@ use actix_web::{
 use listenfd::ListenFd;
 use serde::{Deserialize, Serialize};
 
-use crate::models;
+use crate::models::{self, analyses};
 use crate::utils;
 use crate::utils::mongodb::{DBConnectionPool, create_pool};
 use crate::template::{Template, Render};
@@ -25,8 +25,43 @@ struct AnalysisQuery {
     template: Option<String>
 }
 
+#[derive(Debug, Deserialize)]
+struct AnalysisListQuery {
+    /*
+    #[serde(flatten)]
+    pub select: analyses::SelectOptions
+    */
+    #[serde(rename = "p", default)]
+    pub page: u32,
+    #[serde(rename = "l", default = "default_limit")]
+    pub limit: u32,
+    #[serde(rename = "o", default = "default_order_by")]
+    pub order_by: analyses::SortKey,
+    #[serde(rename = "d", default = "default_direction")]
+    pub direction: i32
+}
+
+fn default_limit() -> u32 { 20 }
+fn default_order_by() -> analyses::SortKey { analyses::SortKey::LastModified }
+fn default_direction() -> i32 { -1 }
+
+impl From<&AnalysisListQuery> for analyses::SelectOptions {
+    fn from(a: &AnalysisListQuery) -> Self {
+        analyses::SelectOptions {
+            skip: a.page * a.limit,
+            limit: a.limit,
+            order_by: a.order_by,
+            direction: a.direction
+        }
+    }
+}
+
+
 #[derive(Serialize)]
 struct AnalysisList {
+    total: u32,
+    page: u32,
+    limit: u32,
     analysis: Vec<Analysis>
 }
 
@@ -49,7 +84,7 @@ fn add_analysis(json: web::Json<Analysis>,
     match a.id {
         None => {
             // add_analysis is allowed when id is None
-            let a = models::analyses::save(&models, &a);
+            let a = analyses::save(&models, &a);
             match a {
                 Ok(a) => HttpResponse::Ok().json(a),
                 Err(_) => HttpResponse::Forbidden().finish()
@@ -70,7 +105,7 @@ fn update_analysis(info: web::Path<AnalysisPath>,
     match &a.id {
         Some(id) if id.clone() == info.id => {
             // update_analysis is allowed when id matches with path
-            let a = models::analyses::save(&models, &a);
+            let a = analyses::save(&models, &a);
             match a {
                 Ok(a) => HttpResponse::Ok().json(a),
                 Err(_) => HttpResponse::Forbidden().finish()
@@ -82,13 +117,20 @@ fn update_analysis(info: web::Path<AnalysisPath>,
 
 
 
-fn list_analysis(pool: web::Data<DBConnectionPool>) -> impl Responder {
+fn list_analysis(query: web::Query<AnalysisListQuery>,
+                 pool: web::Data<DBConnectionPool>) -> impl Responder {
     let db = pool.get().unwrap();
     let models = models::models(&db);
-    let result = models::analyses::select(&models);
+    let query = &query.into_inner();
+    let options = analyses::SelectOptions::from(query);
+    let total = models::analyses::count_total(&models).unwrap();
+    let result = models::analyses::select(&models, &options);
     match result {
         Ok(ans) => {
             let json = AnalysisList {
+                total: total as u32,
+                page: query.page,
+                limit: query.limit,
                 analysis: ans.collect::<Vec<Analysis>>()
             };
             HttpResponse::Ok().json(json)

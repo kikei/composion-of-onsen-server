@@ -294,10 +294,44 @@ impl From<MgMvalMmol> for Bson {
 /**
  * Operations for MongoDB.
  */
-pub fn select(models: &Models) ->
+#[derive(Copy, Clone, Deserialize, Debug)]
+pub enum SortKey {
+    #[serde(rename = "i")]
+    Id,
+    #[serde(rename = "l")]
+    LastModified
+}
+
+#[derive(Debug)]
+pub struct SelectOptions {
+    pub skip: u32,
+    pub limit: u32,
+    pub order_by: SortKey,
+    pub direction: i32
+}
+
+pub fn count_total(models: &Models) -> Result<i64, String> {
+    let coll: &Collection = collection_analyses(models);
+    // NOTE collection.estimated_document_count or collection.document_count
+    // are recommended, however they have not supported in r2d2-mongodb-0.2.2
+    // yet.
+    coll.count(None, None).map_err(|e| String::from(format!("{}", e)))
+}
+
+pub fn select(models: &Models, options: &SelectOptions) ->
     Result<impl Iterator<Item=Analysis>, String> {
         let coll: &Collection = collection_analyses(models);
-        let result = coll.find(None, None);
+        let key = match &options.order_by {
+            SortKey::Id => KEY_ID,
+            SortKey::LastModified => KEY_LAST_MODIFIED
+        };
+        let options = FindOptions {
+            sort: Some(doc!{ key: options.direction }),
+            skip: Some((options.skip) as i64),
+            limit: Some(options.limit as i64),
+            ..Default::default()
+        };
+        let result = coll.find(None, Some(options));
         match result {
             Ok(cur) => Ok(cur.filter_map(|row| {
                 let item: Document = row.ok()?;
