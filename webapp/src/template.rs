@@ -1,6 +1,6 @@
 use handlebars::{
     Handlebars, Context, Helper, HelperResult,
-    Output, RenderContext, RenderError
+    Output, RenderContext
 };
 use serde::{Serialize, Deserialize};
 use serde_json::value::{Value};

@@ -19,10 +19,10 @@ services:
       - "8088:8088"
     user: $UID:$GID
     links:
-      - mongodb
+      - elasticsearch
       - fluentd
     depends_on:
-      - mongodb
+      - elasticsearch
       - fluentd
     logging:
       driver: fluentd
@@ -34,6 +34,8 @@ services:
       RUST_LOG: debug
     entrypoint: /bin/bash
     command: "-i"
+    #entrypoint: /usr/local/cargo/bin/cargo
+    #command: "run app"
     tty: true
   mongodb:
     image: mongo:4
@@ -45,21 +47,14 @@ services:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: admin
       MONGO_INITDB_DATABASE: admin
-  mongo-express:
-    image: mongo-express:latest
-    ports:
-      - "8081:8081"
-    links:
-      - mongodb
-    depends_on:
-      - mongodb
+  elasticsearch:
+    build: docker/elasticsearch
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+    restart: always
     environment:
-      ME_CONFIG_MONGODB_SERVER: mongodb
-      ME_CONFIG_MONGODB_ENABLE_ADMIN: 'true'
-      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
-      ME_CONFIG_MONGODB_ADMINPASSWORD: admin
-      ME_CONFIG_BASICAUTH_USERNAME: ${ME_CONFIG_BASICAUTH_USERNAME}
-      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_CONFIG_BASICAUTH_PASSWORD}
+      discovery.type: single-node
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
   nginx:
     image: nginx:1-alpine
     ports:

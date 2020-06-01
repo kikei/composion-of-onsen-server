@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::models::{self, analyses};
 use crate::utils;
-use crate::utils::mongodb::{DBConnectionPool, create_pool};
+use crate::utils::elasticsearch::{DBConnectionPool, create_pool};
 use crate::template::{Template, Render};
 use crate::analysis::Analysis;
 
@@ -70,21 +70,20 @@ struct TemplateList {
     templates: Vec<Template>
 }
 
-pub fn index() -> impl Responder {
+async fn index() -> impl Responder {
     HttpResponse::Ok().body("こんにちは世界")
 }
 
-fn add_analysis(json: web::Json<Analysis>,
-                pool: web::Data<DBConnectionPool>)
+async fn add_analysis(json: web::Json<Analysis>,
+                      pool: web::Data<DBConnectionPool>)
     -> impl Responder {
     println!("Start add_analysis");
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
+    let models = models::models(pool.get_ref()).await;
     let a = &json.into_inner();
     match a.id {
         None => {
             // add_analysis is allowed when id is None
-            let a = analyses::save(&models, &a);
+            let a = analyses::save(&models, &a).await;
             match a {
                 Ok(a) => HttpResponse::Ok().json(a),
                 Err(_) => HttpResponse::Forbidden().finish()
@@ -94,18 +93,17 @@ fn add_analysis(json: web::Json<Analysis>,
     }
 }
 
-fn update_analysis(info: web::Path<AnalysisPath>,
+async fn update_analysis(info: web::Path<AnalysisPath>,
                    json: web::Json<Analysis>,
                    pool: web::Data<DBConnectionPool>)
                    -> impl Responder {
     println!("Start add_analysis");
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
+    let models = models::models(pool.get_ref()).await;
     let a = &json.into_inner();
     match &a.id {
         Some(id) if id.clone() == info.id => {
             // update_analysis is allowed when id matches with path
-            let a = analyses::save(&models, &a);
+            let a = analyses::save(&models, &a).await;
             match a {
                 Ok(a) => HttpResponse::Ok().json(a),
                 Err(_) => HttpResponse::Forbidden().finish()
@@ -117,16 +115,16 @@ fn update_analysis(info: web::Path<AnalysisPath>,
 
 
 
-fn list_analysis(query: web::Query<AnalysisListQuery>,
+async fn list_analysis(query: web::Query<AnalysisListQuery>,
                  pool: web::Data<DBConnectionPool>) -> impl Responder {
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
+    let models = models::models(pool.get_ref()).await;
     let query = &query.into_inner();
     let options = analyses::SelectOptions::from(query);
-    let total = models::analyses::count_total(&models).unwrap();
-    let result = models::analyses::select(&models, &options);
-    match result {
-        Ok(ans) => {
+    // TODO Run parellely
+    let total = models::analyses::count_total(&models).await;
+    let result = models::analyses::select(&models, &options).await;
+    match (total, result) {
+        (Ok(total), Ok(ans)) => {
             let json = AnalysisList {
                 total: total as u32,
                 page: query.page,
@@ -135,27 +133,27 @@ fn list_analysis(query: web::Query<AnalysisListQuery>,
             };
             HttpResponse::Ok().json(json)
         },
-        Err(e) => {
-            println!("Error {}", e);
-            HttpResponse::InternalServerError().finish()
+        (Err(e), _) |
+        (_, Err(e)) => {
+            warn!("Failed to list analyses, e: {}", e);
+            HttpResponse::NotFound().finish()
         }
     }
 }
 
-fn get_analysis(info: web::Path<AnalysisPath>,
+async fn get_analysis(info: web::Path<AnalysisPath>,
                 query: web::Query<AnalysisQuery>,
                 pool: web::Data<DBConnectionPool>)
                 -> impl Responder {
     println!("Start get_analysis, info: {:?}", &info);
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
-    let result = models::analyses::by_id(&models, &info.id);
+    let models = models::models(pool.get_ref()).await;
+    let result = models::analyses::by_id(&models, &info.id).await;
     match result {
         Ok(Some(a)) => {
             match &query.template {
                 Some(template_id) => {
                     let template =
-                        models::templates::by_id(&models, &template_id);
+                        models::templates::by_id(&models, &template_id).await;
                     match template {
                         Ok(Some(template)) =>
                             HttpResponse::Ok().body(match &a.render(&template) {
@@ -182,13 +180,12 @@ fn get_analysis(info: web::Path<AnalysisPath>,
 }
 
 // POST /templates/
-fn add_template(json: web::Json<Template>,
+async fn add_template(json: web::Json<Template>,
                 pool: web::Data<DBConnectionPool>)
                 -> impl Responder {
     println!("Start add_template");
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
-    let t = models::templates::save(&models, &json.into_inner());
+    let models = models::models(pool.get_ref()).await;
+    let t = models::templates::save(&models, &json.into_inner()).await;
     match t {
         Ok(a) => HttpResponse::Ok().json(&a),
         Err(e) => {
@@ -199,10 +196,9 @@ fn add_template(json: web::Json<Template>,
 }
 
 // GET /templates/
-fn list_templates(pool: web::Data<DBConnectionPool>) -> impl Responder {
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
-    let result = models::templates::select(&models);
+async fn list_templates(pool: web::Data<DBConnectionPool>) -> impl Responder {
+    let models = models::models(pool.get_ref()).await;
+    let result = models::templates::select(&models).await;
     match result {
         Ok(ts) => {
             HttpResponse::Ok().json(TemplateList {
@@ -217,13 +213,12 @@ fn list_templates(pool: web::Data<DBConnectionPool>) -> impl Responder {
 }
 
 // GET /templates/{id}
-fn get_template(info: web::Path<AnalysisPath>,
+async fn get_template(info: web::Path<AnalysisPath>,
                 pool: web::Data<DBConnectionPool>)
                 -> impl Responder {
     println!("Start get_template, info: {:?}", &info);
-    let db = pool.get().unwrap();
-    let models = models::models(&db);
-    let result = models::templates::by_id(&models, &info.id);
+    let models = models::models(pool.get_ref()).await;
+    let result = models::templates::by_id(&models, &info.id).await;
     match result {
         Ok(Some(i)) => HttpResponse::Ok().json(i),
         Ok(None) => HttpResponse::NotFound().finish(),
@@ -235,7 +230,7 @@ fn get_template(info: web::Path<AnalysisPath>,
 }
 
 // /debug/scrube
-fn debug_scrub(query: web::Query<ScrubQuery>) -> String {
+async fn debug_scrub(query: web::Query<ScrubQuery>) -> String {
     utils::scrub::scrub(&query.title)
 }
 
@@ -244,7 +239,10 @@ fn setup_logger() {
     info!("Log initialized.");
 }
 
-pub fn start() {
+#[actix_rt::main]
+// pub async fn start() -> std::io::Result<()> {
+// pub async fn start() -> std::result::Result<(), std::io::Error> {
+pub async fn start() -> () {
     let address = "0.0.0.0:8088";
     /*
      * $ systemfd --no-pid -s http::0.0.0.0:8088 -- cargo watch -x run
@@ -253,8 +251,15 @@ pub fn start() {
     setup_logger();
     let mut listenfd = ListenFd::from_env();
     println!("Starting HTTP server ({})", &address);
-    let mut server = HttpServer::new(|| {
-        let pool = create_pool();
+    // Connection
+    let pool = create_pool();
+    if let Err(e) = pool {
+        println!("Failed to create database connection, {}", &e);
+        return;
+    }
+    let pool = pool.unwrap();
+    // Setup server
+    let mut server = HttpServer::new(move || {
         App::new()
             .data(pool.clone())
             .route("/", web::get().to(index))
@@ -281,9 +286,9 @@ pub fn start() {
         None => server.bind(&address).unwrap()
     };
     server
-    // .workers(4)
+        .workers(1)
         .run()
-        .unwrap();
+        .await;
 }
 
 #[cfg(test)]

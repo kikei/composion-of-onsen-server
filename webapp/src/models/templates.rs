@@ -1,107 +1,123 @@
-use r2d2_mongodb::mongodb::{bson, Bson, doc, Document};
-use r2d2_mongodb::mongodb::coll::Collection;
-use r2d2_mongodb::mongodb::coll::options::ReplaceOptions;
+use std::convert::TryFrom;
+use serde_json::{json, Value};
 
-use crate::models::{Models, collection_templates};
-use crate::template;
-use crate::template::{Template};
-use crate::utils::mongodb::{object_id, document_str};
+use crate::models::{Models};
+use crate::template::{self, Template};
+use crate::utils::elasticsearch::{
+    SearchResultItem,
+    Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
+};
 
-impl From<&Document> for Template {
-    fn from(item: &Document) -> Self {
-        let id = item.get_object_id(template::KEY_ID)
-            .map(|v| v.to_hex())
-            .map_err(|e| error!("BUG: Couldn't get ObjectId, error:{}", e))
-            .ok();
-        let name = document_str(item, template::KEY_NAME).unwrap();
-        let body = document_str(item, template::KEY_BODY).unwrap();
-        Template {
-            id: id,
-            name: name,
-            body: body
-        }
+impl TryFrom<&SearchResultItem> for Template {
+    type Error = String;
+    fn try_from(value: &SearchResultItem) -> Result<Self, Self::Error> {
+        let mut t = Template::try_from(&value._source)?;
+        t.id = Some(value._id.to_string());
+        Ok(t)
     }
 }
-impl From<&Template> for Document {
+
+impl TryFrom<&Value> for Template {
+    type Error = String;
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        let obj = value.as_object()
+            .ok_or(format!("Failed to get Template from Value: {}", &value))?;
+        let name =
+            obj.get(template::KEY_NAME).and_then(|v| v.as_str()).unwrap();
+        let body =
+            obj.get(template::KEY_BODY).and_then(|v| v.as_str()).unwrap();
+        Ok(Template {
+            id: id.map(|s| s.to_string()),
+            name: name.to_string(),
+            body: body.to_string()
+        })
+    }
+}
+
+impl From<&Template> for Value {
     fn from(t: &Template) -> Self {
-        let mut d = doc!{
-            template::KEY_NAME: Bson::String(t.name.to_string()),
-            template::KEY_BODY: Bson::String(t.body.to_string())
-        };
-        if let Some(Bson::ObjectId(id)) = object_id(&t.id) {
-            d.insert_bson(template::KEY_ID.to_string(), Bson::ObjectId(id));
-        };
-        d
+        let mut v = json!({
+            template::KEY_NAME: Value::from(t.name.as_str()),
+            template::KEY_BODY: Value::from(t.body.as_str())
+        });
+        if let Some(id) = &t.id {
+            v.as_object_mut().unwrap().insert(template::KEY_ID.to_string(),
+                                              Value::from(id.as_str()));
+        }
+        v
     }
 }
 
 /**
  * Operations for MongoDB.
  */
-pub fn select(models: &Models) -> Result<impl Iterator<Item=Template>, String> {
-    let coll: &Collection = collection_templates(models);
-    let result = coll.find(None, None);
+pub async fn select<'a>(models: &Models<'a>)
+    -> Result<impl Iterator<Item=Template>, String>
+{
+    let result = models.templates.select(SearchOptions {
+        ..Default::default()
+    }).await;
     match result {
-        Ok(cur) => Ok(cur.filter_map(|row| {
-            let item: Document = row.ok()?;
-            let t: Template = Template::from(&item);
-            Some(t)
+        Ok(result) => Ok(result.hits.hits.into_iter().filter_map(|row| {
+            Template::try_from(&row).ok()
         }).into_iter()),
         Err(e) => Err(String::from(format!("{}", e)))
     }
 }
 
-pub fn by_id(models: &Models, id: &String) -> Result<Option<Template>, String> {
-    let coll = collection_templates(models);
-    let oid = object_id(&Some(id.to_string()))
-        .ok_or(format!("Invalie template id: {}", id))?;
-    let filter = Some(doc! { template::KEY_ID: oid });
-    match coll.find_one(filter, None) {
-        Ok(Some(d)) => Ok(Some(Template::from(&d))),
-        Ok(None) => Ok(None),
+pub async fn by_id<'a>(models: &Models<'a>, id: &String)
+    -> Result<Option<Template>, String>
+{
+    let result = models.templates
+        .get(GetOptions::new(id))
+        .await;
+    match result {
+        Ok(row) => Template::try_from(&row).map(Some),
         Err(e) => Err(format!("Failed to find template, e: {}", &e))
     }
 }
 
-pub fn save(models: &Models, t: &Template) -> Result<Template, String> {
+pub async fn save<'a>(models: &Models<'a>, t: &Template) -> Result<Template, String> {
     // TODO Check template is valid in handlebars syntax.
     debug!("templates::save, template: {:?} name: {}", &t.id, &t.name);
-    let coll = collection_templates(models);
     // Clone object
-    let id = object_id(&t.id).ok_or("Invalid id".to_string())?;
-    let d = Document::from(t);
-    let result = match id {
-        Bson::ObjectId(_) => { // Update exists object
-            let options = ReplaceOptions {
-                upsert: Some(true),
-                ..Default::default()
-            };
-            let filter = doc! { template::KEY_ID: id };
-            coll.replace_one(filter, d, Some(options))
+    let v = Value::from(t);
+    let result = match &t.id {
+        Some(id) => { // Update exists object
+            models.templates
+                .update(&v, UpdateOptions::new(id))
+                .await
                 .map(|r| {
                     debug!("templates::save to update, result: {:?}", &r);
+                    id.clone()
+                    /*
                     if r.modified_count >= 0 {
                         object_id(&t.id)
                     } else {
                         r.upserted_id
                     }
+                    */
                 })
         },
-        _ => // Insert new object
-            coll.insert_one(d, None).map(|r| {
-                debug!("templates::save to create, result: {:?}", &r);
-                r.inserted_id
-            })
+        _ => { // Insert new object
+            models.templates
+                .insert(&v, InsertOptions::new(None))
+                .await
+                .map(|r| {
+                    debug!("templates::save to create, result: {:?}", &r);
+                    "TODO".to_string()
+                })
+        }
     };
     match result {
-        Ok(Some(Bson::ObjectId(id))) => {
+        Ok(id) => {
             let mut t: Template = t.clone();
-            t.id = Some(id.to_hex());
+            t.id = Some(id);
             Ok(t)
         },
-        Ok(e) =>
-            Err(String::from(format!("unexpected result in template::save,
-                                     e: {:?}", &e))),
+        // Ok(e) =>
+        //     Err(String::from(format!("unexpected result in template::save,
+        //                              e: {:?}", &e))),
         Err(e) => Err(String::from(format!("{}", e)))
     }
 }

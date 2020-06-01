@@ -33,25 +33,3 @@ pub fn get_unpooled_connection() -> Result<DBConnection, r2d2::Error>  {
     let pool = create_pool();
     pool.get()
 }
-
-/// Helper to make Bson::ObjectId
-pub fn object_id(id: &Option<String>) -> Option<Bson> {
-    match id {
-        Some(id) => match ObjectId::with_string(id) {
-            Ok(id) => Some(Bson::ObjectId(id)),
-            Err(_) => None
-        },
-        None => Some(Bson::Null)
-    }
-}
-
-/**
- * Extractor for Document
- */
-pub fn document_str(item: &Document, key: &str) -> Option<String> {
-    item.get_str(key).ok().map(|v| String::from(v))
-}
-
-pub fn document_number(item: &Document, key: &str) -> Option<f64> {
-    item.get_f64(key).ok()
-}

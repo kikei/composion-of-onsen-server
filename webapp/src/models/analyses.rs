@@ -2,15 +2,18 @@ use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use r2d2_mongodb::mongodb::{self, bson, Bson, doc, Document};
-use r2d2_mongodb::mongodb::coll::Collection;
-use r2d2_mongodb::mongodb::coll::options::{FindOptions};
 use serde::Deserialize;
+use serde_json::{json, Value};
 
 use crate::analysis::{Analysis, ComponentTable, CellValue, MgMvalMmol};
-use crate::models::{Models, collection_analyses};
-use crate::utils::mongodb::{document_str, document_number};
+use crate::models::{Models};
+// use crate::utils::mongodb::{document_str, document_number};
+use crate::utils::elasticsearch::{
+    SearchResultItem,
+    Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
+};
 use crate::utils::scrub;
+use crate::utils::json::from_value;
 
 const KEY_ID: &str = "id";
 const KEY_NAME: &str = "name";
@@ -36,33 +39,54 @@ const KEY_MMOL: &str = "mm";
 const KEY_LAST_MODIFIED: &str = "_lamo";
 const KEY_CREATED_AT: &str = "_crat";
 
+const KEY_NUMBER: &str = "n";
+const KEY_TEXT: &str = "t";
+
 /**
  * Conversions from MongoDB object to Analysis.
  */
-impl TryFrom<&Bson> for CellValue {
+impl TryFrom<&Value> for CellValue {
     type Error = String;
-    fn try_from(a: &Bson) -> Result<Self, Self::Error> {
-        match a {
-            Bson::FloatingPoint(a) => Ok(CellValue::Number(*a)),
-            Bson::I32(a) => Ok(CellValue::Number(f64::from(*a))),
-            Bson::I64(a) => Ok(CellValue::Number(*a as f64)),
-            Bson::String(a) => Ok(CellValue::Text(a.to_string())),
-            Bson::Null => Ok(CellValue::Null),
-            _ => {
-                info!("try_from(Bson)->CellValue, unexpected bson: {}", &a);
-                Ok(CellValue::Null)
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        if let Some(obj) = value.as_object() {
+            if let Some(Value::Number(v)) = obj.get(KEY_NUMBER) {
+                return Ok(CellValue::Number(v.as_f64().unwrap()))
+            }
+            if let Some(Value::String(v)) = obj.get(KEY_TEXT) {
+                return Ok(CellValue::Text(v.to_string()))
             }
         }
+        Ok(CellValue::Null)
     }
 }
 
-impl TryFrom<&Document> for MgMvalMmol {
+// impl TryFrom<&Bson> for CellValue {
+//     type Error = String;
+//     fn try_from(a: &Bson) -> Result<Self, Self::Error> {
+//         match a {
+//             Bson::FloatingPoint(a) => Ok(CellValue::Number(*a)),
+//             Bson::I32(a) => Ok(CellValue::Number(f64::from(*a))),
+//             Bson::I64(a) => Ok(CellValue::Number(*a as f64)),
+//             Bson::String(a) => Ok(CellValue::Text(a.to_string())),
+//             Bson::Null => Ok(CellValue::Null),
+//             _ => {
+//                 info!("try_from(Bson)->CellValue, unexpected bson: {}", &a);
+//                 Ok(CellValue::Null)
+//             }
+//         }
+//     }
+// }
+
+impl TryFrom<&Value> for MgMvalMmol {
     type Error = String;
-    fn try_from(d: &Document) -> Result<Self, Self::Error> {
-        let mg = document_cell_value(d, KEY_MG)?;
-        let mval = document_cell_value(d, KEY_MVAL)?;
-        let mval_percent = document_cell_value(d, KEY_MVAL_PERCENT)?;
-        let mmol = document_cell_value(d, KEY_MMOL)?;
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        let obj = value.as_object()
+            .ok_or(format!("Failed to get MgMvalMmol from Value: {}",
+                           &value))?;
+        let mg = from_value::<CellValue>(obj.get(KEY_MG))?;
+        let mval = from_value::<CellValue>(obj.get(KEY_MVAL))?;
+        let mval_percent = from_value::<CellValue>(obj.get(KEY_MVAL_PERCENT))?;
+        let mmol = from_value::<CellValue>(obj.get(KEY_MMOL))?;
         Ok(MgMvalMmol {
             mg: mg,
             mval: mval,
@@ -72,12 +96,31 @@ impl TryFrom<&Document> for MgMvalMmol {
     }
 }
 
-impl TryFrom<&Document> for ComponentTable {
+// impl TryFrom<&Document> for MgMvalMmol {
+//     type Error = String;
+//     fn try_from(d: &Document) -> Result<Self, Self::Error> {
+//         let mg = document_cell_value(d, KEY_MG)?;
+//         let mval = document_cell_value(d, KEY_MVAL)?;
+//         let mval_percent = document_cell_value(d, KEY_MVAL_PERCENT)?;
+//         let mmol = document_cell_value(d, KEY_MMOL)?;
+//         Ok(MgMvalMmol {
+//             mg: mg,
+//             mval: mval,
+//             mval_percent: mval_percent,
+//             mmol: mmol
+//         })
+//     }
+// }
+
+impl TryFrom<&Value> for ComponentTable {
     type Error = String;
-    fn try_from(item: &Document) -> Result<Self, Self::Error> {
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        let obj = value.as_object()
+            .ok_or(format!("Failed to get ComponentTable from Value: {}",
+                           &value))?;
         let mut components = HashMap::new();
-        for key in item.keys() {
-            let v = document_mg_mval_mmol(item, key.as_str())?;
+        for (key, value) in obj.iter() {
+            let v = MgMvalMmol::try_from(value)?;
             components.insert(key.to_string(), v);
         }
         Ok(ComponentTable {
@@ -86,41 +129,88 @@ impl TryFrom<&Document> for ComponentTable {
     }
 }
 
-impl TryFrom<&Document> for Analysis {
+// impl TryFrom<&Document> for ComponentTable {
+//     type Error = String;
+//     fn try_from(item: &Document) -> Result<Self, Self::Error> {
+//         let mut components = HashMap::new();
+//         for key in item.keys() {
+//             let v = document_mg_mval_mmol(item, key.as_str())?;
+//             components.insert(key.to_string(), v);
+//         }
+//         Ok(ComponentTable {
+//             components: components
+//         })
+//     }
+// }
+
+impl TryFrom<&SearchResultItem> for Analysis {
     type Error = String;
-    fn try_from(item: &Document) -> Result<Self, Self::Error> {
-        let id = document_str(item, KEY_ID)
-            .ok_or("BUG: The id field in analysis from Document is missed.
-                    Perhaps it has been lost when it was stored to DB.")?;
-        let name = document_str(item, KEY_NAME)
+    fn try_from(value: &SearchResultItem) -> Result<Self, Self::Error> {
+        let mut a = Analysis::try_from(&value._source)?;
+        a.id = Some(value._id.to_string());
+        Ok(a)
+    }
+}
+
+impl TryFrom<&Value> for Analysis {
+    type Error = String;
+    fn try_from(value: &Value) -> Result<Self, Self::Error> {
+        let obj = value.as_object()
+            .ok_or(format!("Failed to get Analysis from Value: {}",
+                           &value))?;
+        let id = obj.get(KEY_ID).and_then(|v| v.as_str()).map(|s| s.to_string());
+        let name = obj.get(KEY_NAME).and_then(|v| v.as_str())
             .ok_or("BUG: missing name?")?;
-        let gensen_yield = document_number(item, KEY_YIELD)
-            .map_or(CellValue::Null, CellValue::Number);
-        let temperature = document_number(item, KEY_TEMPERATURE);
-        let ph = document_number(item, KEY_PH)
-            .map_or(CellValue::Null, CellValue::Number);
-        let positive_ion = document_component_table(item, KEY_POSITIVE_ION)?;
-        let negative_ion = document_component_table(item, KEY_NEGATIVE_ION)?;
-        let undissociated = document_component_table(item, KEY_UNDISSOCIATED)?;
-        let gas = document_component_table(item, KEY_GAS)?;
-        let minor = document_component_table(item, KEY_MINOR)?;
+        let gensen_yield = obj.get(KEY_YIELD).and_then(|v| v.as_f64())
+            .map_or_else(|| CellValue::Null, CellValue::Number);
+        let temperature = obj.get(KEY_TEMPERATURE).and_then(|v| v.as_f64());
+        let ph = obj.get(KEY_PH).and_then(|v| v.as_f64())
+            .map_or_else(|| CellValue::Null, CellValue::Number);
+        // let positive_ion = ComponentTable::try_from(obj.get(KEY_POSITIVE_ION))?;
+        // let negative_ion = ComponentTable::try_from(obj.get(KEY_NEGATIVE_ION))?;
+        // let undissociated = ComponentTable::try_from(obj.get(KEY_UNDISSOCIATED))?;
+        // let gas = ComponentTable::try_from(obj.get(KEY_GAS))?;
+        // let minor = ComponentTable::try_from(obj.get(KEY_MINOR))?;
+        let positive_ion =
+            from_value::<ComponentTable>(obj.get(KEY_POSITIVE_ION))?;
+        let negative_ion =
+            from_value::<ComponentTable>(obj.get(KEY_NEGATIVE_ION))?;
+        let undissociated =
+            from_value::<ComponentTable>(obj.get(KEY_UNDISSOCIATED))?;
+        let gas = from_value::<ComponentTable>(obj.get(KEY_GAS))?;
+        let minor = from_value::<ComponentTable>(obj.get(KEY_MINOR))?;
         // Total of components
+        // let total_positive_ion =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL_POSITIVE_ION))?;
+        // let total_negative_ion =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL_NEGATIVE_ION))?;
+        // let total_undissociated =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL_UNDISSOCIATED))?;
+        // let total_gas =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL_GAS))?;
+        // let total_minor =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL_MINOR))?;
+        // let total_melt =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL_MELT))?;
+        // let total =
+        //     MgMvalMmol::try_from(obj.get(KEY_TOTAL))?;
         let total_positive_ion =
-            document_mg_mval_mmol(item, KEY_TOTAL_POSITIVE_ION)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL_POSITIVE_ION))?;
         let total_negative_ion =
-            document_mg_mval_mmol(item, KEY_TOTAL_NEGATIVE_ION)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL_NEGATIVE_ION))?;
         let total_undissociated =
-            document_mg_mval_mmol(item, KEY_TOTAL_UNDISSOCIATED)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL_UNDISSOCIATED))?;
         let total_gas =
-            document_mg_mval_mmol(item, KEY_TOTAL_GAS)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL_GAS))?;
         let total_minor =
-            document_mg_mval_mmol(item, KEY_TOTAL_MINOR)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL_MINOR))?;
         let total_melt =
-            document_mg_mval_mmol(item, KEY_TOTAL_MELT)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL_MELT))?;
         let total =
-            document_mg_mval_mmol(item, KEY_TOTAL)?;
+            from_value::<MgMvalMmol>(obj.get(KEY_TOTAL))?;
+        // Metadata
         let mut meta = HashMap::new();
-        for (key, value) in item {
+        for (key, value) in obj.iter() {
             match key.as_str() {
                 KEY_ID | KEY_NAME | KEY_YIELD | KEY_TEMPERATURE | KEY_PH | 
                 KEY_POSITIVE_ION | KEY_NEGATIVE_ION |
@@ -137,13 +227,11 @@ impl TryFrom<&Document> for Analysis {
                 }
             }
         }
-        let last_modified =
-            document_number(item, KEY_LAST_MODIFIED).map(|f| f as f64);
-        let created_at =
-            document_number(item, KEY_CREATED_AT).map(|f| f as f64);
+        let last_modified = obj.get(KEY_LAST_MODIFIED).and_then(|v| v.as_f64());
+        let created_at = obj.get(KEY_CREATED_AT).and_then(|v| v.as_f64());
         Ok(Analysis {
-            id: Some(id),
-            name: name,
+            id: id,
+            name: name.to_string(),
             gensen_yield: gensen_yield,
             temperature: temperature,
             ph: ph,
@@ -164,132 +252,285 @@ impl TryFrom<&Document> for Analysis {
             created_at: created_at
         })
     }
+
 }
 
-fn document_mg_mval_mmol(item: &Document, key: &str)
-    -> Result<MgMvalMmol, String>
-{
-    item.get_document(key)
-        .or(Ok(&Document::new())
-            as Result<&Document, mongodb::ordered::ValueAccessError>)
-        .map_err(|e| e.to_string())
-        .and_then(MgMvalMmol::try_from)
-}
+// impl TryFrom<&Document> for Analysis {
+//     type Error = String;
+//     fn try_from(item: &Document) -> Result<Self, Self::Error> {
+//         let id = document_str(item, KEY_ID)
+//             .ok_or("BUG: The id field in analysis from Document is missed.
+//                     Perhaps it has been lost when it was stored to DB.")?;
+//         let name = document_str(item, KEY_NAME)
+//             .ok_or("BUG: missing name?")?;
+//         let gensen_yield = document_number(item, KEY_YIELD)
+//             .map_or(CellValue::Null, CellValue::Number);
+//         let temperature = document_number(item, KEY_TEMPERATURE);
+//         let ph = document_number(item, KEY_PH)
+//             .map_or(CellValue::Null, CellValue::Number);
+//         let positive_ion = document_component_table(item, KEY_POSITIVE_ION)?;
+//         let negative_ion = document_component_table(item, KEY_NEGATIVE_ION)?;
+//         let undissociated = document_component_table(item, KEY_UNDISSOCIATED)?;
+//         let gas = document_component_table(item, KEY_GAS)?;
+//         let minor = document_component_table(item, KEY_MINOR)?;
+//         // Total of components
+//         let total_positive_ion =
+//             document_mg_mval_mmol(item, KEY_TOTAL_POSITIVE_ION)?;
+//         let total_negative_ion =
+//             document_mg_mval_mmol(item, KEY_TOTAL_NEGATIVE_ION)?;
+//         let total_undissociated =
+//             document_mg_mval_mmol(item, KEY_TOTAL_UNDISSOCIATED)?;
+//         let total_gas =
+//             document_mg_mval_mmol(item, KEY_TOTAL_GAS)?;
+//         let total_minor =
+//             document_mg_mval_mmol(item, KEY_TOTAL_MINOR)?;
+//         let total_melt =
+//             document_mg_mval_mmol(item, KEY_TOTAL_MELT)?;
+//         let total =
+//             document_mg_mval_mmol(item, KEY_TOTAL)?;
+//         let mut meta = HashMap::new();
+//         for (key, value) in item {
+//             match key.as_str() {
+//                 KEY_ID | KEY_NAME | KEY_YIELD | KEY_TEMPERATURE | KEY_PH | 
+//                 KEY_POSITIVE_ION | KEY_NEGATIVE_ION |
+//                 KEY_UNDISSOCIATED | KEY_GAS | KEY_MINOR |
+//                 KEY_TOTAL_POSITIVE_ION | KEY_TOTAL_NEGATIVE_ION |
+//                 KEY_TOTAL_UNDISSOCIATED | KEY_TOTAL_GAS | KEY_TOTAL_MINOR |
+//                 KEY_TOTAL_MELT | KEY_TOTAL |
+//                 KEY_LAST_MODIFIED | KEY_CREATED_AT => {},
+//                 _ => {
+//                     meta.insert(key.to_string(), match value.as_str() {
+//                         Some(v) => v.to_string(),
+//                         None => value.to_string()
+//                     });
+//                 }
+//             }
+//         }
+//         let last_modified =
+//             document_number(item, KEY_LAST_MODIFIED).map(|f| f as f64);
+//         let created_at =
+//             document_number(item, KEY_CREATED_AT).map(|f| f as f64);
+//         Ok(Analysis {
+//             id: Some(id),
+//             name: name,
+//             gensen_yield: gensen_yield,
+//             temperature: temperature,
+//             ph: ph,
+//             positive_ion: positive_ion,
+//             negative_ion: negative_ion,
+//             undissociated: undissociated,
+//             gas: gas,
+//             minor: minor,
+//             total_positive_ion: total_positive_ion,
+//             total_negative_ion: total_negative_ion,
+//             total_undissociated: total_undissociated,
+//             total_gas: total_gas,
+//             total_minor: total_minor,
+//             total_melt: total_melt,
+//             total: total,
+//             meta: meta,
+//             last_modified: last_modified,
+//             created_at: created_at
+//         })
+//     }
+// }
 
-fn document_cell_value(item: &Document, key: &str) -> Result<CellValue, String>
-{
-    match item.get(key) {
-        Some(a) => CellValue::try_from(a),
-        None => Ok(CellValue::Null)
-    }
-}
+// fn document_mg_mval_mmol(item: &Document, key: &str)
+//     -> Result<MgMvalMmol, String>
+// {
+//     item.get_document(key)
+//         .or(Ok(&Document::new())
+//             as Result<&Document, mongodb::ordered::ValueAccessError>)
+//         .map_err(|e| e.to_string())
+//         .and_then(MgMvalMmol::try_from)
+// }
 
-fn document_component_table(item: &Document, key: &str)
-    -> Result<ComponentTable, String>
-{
-    item.get_document(key)
-        .or(Ok(&Document::new())
-            as Result<&Document, mongodb::ordered::ValueAccessError>)
-        .map_err(|e| e.to_string())
-        .and_then(ComponentTable::try_from)
-}
+
+// fn document_cell_value(item: &Document, key: &str) -> Result<CellValue, String>
+// {
+//     match item.get(key) {
+//         Some(a) => CellValue::try_from(a),
+//         None => Ok(CellValue::Null)
+//     }
+// }
+// 
+// fn document_component_table(item: &Document, key: &str)
+//     -> Result<ComponentTable, String>
+// {
+//     item.get_document(key)
+//         .or(Ok(&Document::new())
+//             as Result<&Document, mongodb::ordered::ValueAccessError>)
+//         .map_err(|e| e.to_string())
+//         .and_then(ComponentTable::try_from)
+// }
 
 /**
  * Conversions from Analysis to MongoDB object.
  */
-impl From<&Analysis> for Document {
+impl From<&Analysis> for Value {
     fn from(item: &Analysis) -> Self {
-        let mut d = doc! {
-            KEY_ID: item.id.as_ref().map_or(Bson::Null, Bson::from),
-            KEY_NAME: Bson::from(&item.name),
-            KEY_YIELD: Bson::from(&item.gensen_yield),
+        let mut d = json!({
+            KEY_ID: item.id.as_ref().map_or(Value::Null,
+                                            |s| Value::from(s.as_str())),
+            KEY_NAME: Value::from(item.name.as_str()),
+            KEY_YIELD: Value::from(&item.gensen_yield),
             KEY_TEMPERATURE: item
-                .temperature.map_or(Bson::Null, Bson::from),
-            KEY_PH: Bson::from(&item.ph),
-            KEY_POSITIVE_ION: Bson::from(&item.positive_ion),
-            KEY_NEGATIVE_ION: Bson::from(&item.negative_ion),
-            KEY_UNDISSOCIATED: Bson::from(&item.undissociated),
-            KEY_GAS: Bson::from(&item.gas),
-            KEY_MINOR: Bson::from(&item.minor),
-            KEY_TOTAL_POSITIVE_ION:
-            Bson::from(&item.total_positive_ion),
-            KEY_TOTAL_NEGATIVE_ION:
-            Bson::from(&item.total_negative_ion),
-            KEY_TOTAL_UNDISSOCIATED:
-            Bson::from(&item.total_undissociated),
-            KEY_TOTAL_GAS:
-            Bson::from(&item.total_gas),
-            KEY_TOTAL_MINOR:
-            Bson::from(&item.total_minor),
-            KEY_TOTAL_MELT:
-            Bson::from(&item.total_melt),
-            KEY_TOTAL:
-            Bson::from(&item.total),
-            KEY_CREATED_AT: item
-                .created_at.map_or(Bson::Null, Bson::from),
+                .temperature.map_or(Value::Null, Value::from),
+            KEY_PH: Value::from(&item.ph),
+            KEY_POSITIVE_ION: Value::from(&item.positive_ion),
+            KEY_NEGATIVE_ION: Value::from(&item.negative_ion),
+            KEY_UNDISSOCIATED: Value::from(&item.undissociated),
+            KEY_GAS: Value::from(&item.gas),
+            KEY_MINOR: Value::from(&item.minor),
+            KEY_TOTAL_POSITIVE_ION: Value::from(&item.total_positive_ion),
+            KEY_TOTAL_NEGATIVE_ION: Value::from(&item.total_negative_ion),
+            KEY_TOTAL_UNDISSOCIATED: Value::from(&item.total_undissociated),
+            KEY_TOTAL_GAS: Value::from(&item.total_gas),
+            KEY_TOTAL_MINOR: Value::from(&item.total_minor),
+            KEY_TOTAL_MELT: Value::from(&item.total_melt),
+            KEY_TOTAL: Value::from(&item.total),
+            KEY_CREATED_AT: item.created_at.map_or(Value::Null, Value::from),
             KEY_LAST_MODIFIED: item
-                .last_modified.map_or(Bson::Null, Bson::from)
-        };
+                .last_modified.map_or(Value::Null, Value::from)
+        });
+        let obj = d.as_object_mut().unwrap();
         for (key, value) in &item.meta {
-            if !d.contains_key(&key) {
-                d.insert(key.to_string(), Bson::String(value.to_string()));
+            if !obj.contains_key(key) {
+                obj.insert(key.to_string(), Value::from(value.as_str()));
             }
         }
         d
     }
 }
 
-impl From<&ComponentTable> for Bson {
+// impl From<&Analysis> for Document {
+//     fn from(item: &Analysis) -> Self {
+//         let mut d = doc! {
+//             KEY_ID: item.id.as_ref().map_or(Bson::Null, Bson::from),
+//             KEY_NAME: Bson::from(&item.name),
+//             KEY_YIELD: Bson::from(&item.gensen_yield),
+//             KEY_TEMPERATURE: item
+//                 .temperature.map_or(Bson::Null, Bson::from),
+//             KEY_PH: Bson::from(&item.ph),
+//             KEY_POSITIVE_ION: Bson::from(&item.positive_ion),
+//             KEY_NEGATIVE_ION: Bson::from(&item.negative_ion),
+//             KEY_UNDISSOCIATED: Bson::from(&item.undissociated),
+//             KEY_GAS: Bson::from(&item.gas),
+//             KEY_MINOR: Bson::from(&item.minor),
+//             KEY_TOTAL_POSITIVE_ION:
+//             Bson::from(&item.total_positive_ion),
+//             KEY_TOTAL_NEGATIVE_ION:
+//             Bson::from(&item.total_negative_ion),
+//             KEY_TOTAL_UNDISSOCIATED:
+//             Bson::from(&item.total_undissociated),
+//             KEY_TOTAL_GAS:
+//             Bson::from(&item.total_gas),
+//             KEY_TOTAL_MINOR:
+//             Bson::from(&item.total_minor),
+//             KEY_TOTAL_MELT:
+//             Bson::from(&item.total_melt),
+//             KEY_TOTAL:
+//             Bson::from(&item.total),
+//             KEY_CREATED_AT: item
+//                 .created_at.map_or(Bson::Null, Bson::from),
+//             KEY_LAST_MODIFIED: item
+//                 .last_modified.map_or(Bson::Null, Bson::from)
+//         };
+//         for (key, value) in &item.meta {
+//             if !d.contains_key(&key) {
+//                 d.insert(key.to_string(), Bson::String(value.to_string()));
+//             }
+//         }
+//         d
+//     }
+// }
+
+impl From<&ComponentTable> for Value {
     fn from(item: &ComponentTable) -> Self {
         let ComponentTable { components } = &item;
-        let mut doc = doc! {};
+        let mut doc = json!({});
         for (key, value) in components {
-            println!("doc.insert({}, {})", key, Bson::from(value));
-            doc.insert(key.to_string(), Bson::from(value));
+            println!("doc.insert({}, {})", key, Value::from(value));
+            doc.as_object_mut().unwrap()
+                .insert(key.to_string(), Value::from(value));
         }
-        Bson::Document(doc)
+        doc
     }
 }
+
+// impl From<&ComponentTable> for Bson {
+//     fn from(item: &ComponentTable) -> Self {
+//         let ComponentTable { components } = &item;
+//         let mut doc = doc! {};
+//         for (key, value) in components {
+//             println!("doc.insert({}, {})", key, Bson::from(value));
+//             doc.insert(key.to_string(), Bson::from(value));
+//         }
+//         Bson::Document(doc)
+//     }
+// }
 
 /**
  * Conversions from CellValue to MongoDB object.
  */
-impl From<&CellValue> for Bson {
+impl From<&CellValue> for Value {
     fn from(item: &CellValue) -> Self {
         match item {
-            CellValue::Number(x) => Bson::FloatingPoint(*x),
-            CellValue::Text(x) => Bson::String(x.to_string()),
-            CellValue::Null => Bson::Null
+            CellValue::Number(x) => json!({KEY_NUMBER: *x}),
+            CellValue::Text(x) => json!({KEY_TEXT: x}),
+            CellValue::Null => Value::Null
         }
     }
 }
 
-impl From<CellValue> for Bson {
-    fn from(item: CellValue) -> Self {
-        Bson::from(&item)
-    }
-}
+// impl From<&CellValue> for Bson {
+//     fn from(item: &CellValue) -> Self {
+//         match item {
+//             CellValue::Number(x) => Bson::FloatingPoint(*x),
+//             CellValue::Text(x) => Bson::String(x.to_string()),
+//             CellValue::Null => Bson::Null
+//         }
+//     }
+// }
+// 
+// impl From<CellValue> for Bson {
+//     fn from(item: CellValue) -> Self {
+//         Bson::from(&item)
+//     }
+// }
 
 /**
  * Conversions from MgMvalMmol to MongoDB object.
  */
-impl From<&MgMvalMmol> for Bson {
+impl From<&MgMvalMmol> for Value {
     fn from(item: &MgMvalMmol) -> Self {
-        let doc = doc!{
+        let value = json!({
             KEY_MG: item.mg.clone(),
             KEY_MVAL: item.mval.clone(),
             KEY_MVAL_PERCENT: item.mval_percent.clone(),
             KEY_MMOL: item.mmol.clone()
-        };
-        Bson::Document(doc)
+        });
+        value
     }
 }
 
-impl From<MgMvalMmol> for Bson {
-    fn from(item: MgMvalMmol) -> Self {
-        Bson::from(&item)
-    }
-}
+// impl From<&MgMvalMmol> for Bson {
+//     fn from(item: &MgMvalMmol) -> Self {
+//         let doc = doc!{
+//             KEY_MG: item.mg.clone(),
+//             KEY_MVAL: item.mval.clone(),
+//             KEY_MVAL_PERCENT: item.mval_percent.clone(),
+//             KEY_MMOL: item.mmol.clone()
+//         };
+//         Bson::Document(doc)
+//     }
+// }
+// 
+// impl From<MgMvalMmol> for Bson {
+//     fn from(item: MgMvalMmol) -> Self {
+//         Bson::from(&item)
+//     }
+// }
 
 /**
  * Operations for MongoDB.
@@ -310,57 +551,57 @@ pub struct SelectOptions {
     pub direction: i32
 }
 
-pub fn count_total(models: &Models) -> Result<i64, String> {
-    let coll: &Collection = collection_analyses(models);
-    // NOTE collection.estimated_document_count or collection.document_count
-    // are recommended, however they have not supported in r2d2-mongodb-0.2.2
-    // yet.
-    coll.count(None, None).map_err(|e| String::from(format!("{}", e)))
+pub async fn count_total<'a>(models: &Models<'a>) -> Result<u64, String> {
+    models.analyses
+        .count()
+        .await
+        .map_err(|e| String::from(format!("{}", e)))
 }
 
-pub fn select(models: &Models, options: &SelectOptions) ->
+pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
     Result<impl Iterator<Item=Analysis>, String> {
-        let coll: &Collection = collection_analyses(models);
         let key = match &options.order_by {
             SortKey::Id => KEY_ID,
             SortKey::LastModified => KEY_LAST_MODIFIED
         };
-        let options = FindOptions {
-            sort: Some(doc!{ key: options.direction }),
-            skip: Some((options.skip) as i64),
-            limit: Some(options.limit as i64),
-            ..Default::default()
+        let direction = match options.direction {
+            1 => "asc",
+            _ => "desc"
         };
-        let result = coll.find(None, Some(options));
+        let result = models.analyses.select(SearchOptions {
+            //sort: Some(format!("{}:{}", &key, &direction)),
+            from: Some(options.skip),
+            size: Some(options.limit),
+            ..Default::default()
+        }).await;
         match result {
-            Ok(cur) => Ok(cur.filter_map(|row| {
-                let item: Document = row.ok()?;
-                Analysis::try_from(&item).ok()
-                // let a: Analysis = Analysis::from(&item);
-                // Some(a)
+            Ok(result) => Ok(result.hits.hits.into_iter().filter_map(|row| {
+                Analysis::try_from(&row).ok()
             }).into_iter()),
             Err(e) => Err(String::from(format!("{}", e)))
         }
 }
 
-pub fn by_id(models: &Models, id: &String) -> Result<Option<Analysis>, String>
+pub async fn by_id<'a>(models: &Models<'a>, id: &String)
+    -> Result<Option<Analysis>, String>
 {
     debug!("analyses::by_id, id: {}", &id);
-    let coll: &Collection = collection_analyses(models);
-    let result = coll.find_one(Some(doc!{ KEY_ID: id }), None);
+    let result = models.analyses
+        .get(GetOptions::new(id))
+        .await;
     debug!("analyses::by_id, result: {:?}", &result);
     match result {
-        Ok(Some(row)) => Analysis::try_from(&row).map(|a| Some(a)),
-        Ok(None) => Ok(None),
+        Ok(row) => Analysis::try_from(&row).map(|a| Some(a)),
         Err(e) => Err(String::from(format!("{}", e)))
     }
 }
 
-pub fn save(models: &Models, a: &Analysis) -> Result<Analysis, String> {
-    let coll = collection_analyses(models);
+pub async fn save<'a>(models: &Models<'a>, a: &Analysis)
+    -> Result<Analysis, String> 
+{
     let (id, is_new) = match &a.id {
         Some(id) => (id.to_string(), false),
-        None => match create_unique_id(models, a) {
+        None => match create_unique_id(models, a).await {
             Ok(id) => (id, true),
             Err(e) => return Err(e)
         }
@@ -379,26 +620,31 @@ pub fn save(models: &Models, a: &Analysis) -> Result<Analysis, String> {
     a.created_at = a.created_at.or(Some(epoch));
     // Update last_modified
     a.last_modified = Some(epoch);
+    let value = Value::from(&a);
     // Write to DB
-    let filter = doc!{ KEY_ID: &id };
-    let d = Document::from(&a);
-    debug!("analyses::save, is_new: {}, fileter: {:?}, d: {:?}",
-           &is_new, &filter, &d);
+    debug!("analyses::save, is_new: {}, value: {}", &is_new, &value);
     let result = if is_new {
-        coll.insert_one(d, None)
+        models.analyses
+            .insert(&value, InsertOptions::new(None))
+            .await
             .map(|r| {
                 debug!("analyses::save, created, result: {:?}", &r);
                 Some(a)
             })
     } else {
-        coll.replace_one(filter, d, None)
+        models.analyses
+            .update(&value, UpdateOptions::new(id.as_str()))
+            .await
             .map(|r| {
                 debug!("analyses::save, updated, result: {:?}", &r);
+                Some(a)
+                /*
                 if r.modified_count > 0 {
                     Some(a)
                 } else {
                     None
                 }
+                */
             })
     };
     match result {
@@ -411,9 +657,8 @@ pub fn save(models: &Models, a: &Analysis) -> Result<Analysis, String> {
 
 const MAX_ID_SERIAL: usize = 99;
 
-pub fn create_unique_id(models: &Models, a: &Analysis)
+pub async fn create_unique_id<'a>(models: &Models<'a>, a: &Analysis)
                         -> Result<String, String> {
-    let coll: &Collection = collection_analyses(models);
     let base = new_id(a);
     let mut i = 0;
     loop {
@@ -426,10 +671,14 @@ pub fn create_unique_id(models: &Models, a: &Analysis)
         } else {
             format!("{}-{}", &base, i)
         };
-        match coll.find_one(Some(doc!{ KEY_ID: &tryid }), None) {
-            Ok(Some(_)) => i += 1,
-            Ok(None) => break Ok(tryid),
-            Err(e) => break Err(format!("Cannot create uniquid id, e: {}", e))
+        match models.analyses.get(GetOptions::new(tryid.as_str())).await {
+            Ok(_) => i += 1,
+            Err(e) => {
+                info!("Cannot create unique id, e: {}", &e);
+                break Ok(tryid)    
+            }
+            // Ok(None) => break Ok(tryid),
+            // Err(e) => break Err(format!("Cannot create uniquid id, e: {}", e))
         }
     }
 }

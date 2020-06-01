@@ -1,4 +1,4 @@
-FROM rust:1.38
+FROM rust:1.43
 
 ARG UID
 ARG GID
@@ -10,7 +10,7 @@ ENV UNAME $UNAME
 ENV DATADIR /mnt
 ENV DICDIR=/var/lib/mecab/dic/mydic
 
-COPY . /usr/src/app
+#COPY . /usr/src/app
 
 # Sometimes target causes error
 RUN rm -rf /usr/src/app/target
@@ -45,7 +45,7 @@ RUN echo "dicdir = $DICDIR" >> ~/.mecabrc
 # but the copied directory is owned by root,
 # RUN cargo install --path .
 # So I copy it and install cargo dependencies as workaround.
-RUN cp -a /usr/src/app $HOME
-RUN cd $HOME/app && cargo install --path .
+#RUN cp -a /usr/src/app $HOME
+#RUN cd $HOME/app && cargo install --path .
 
 ENTRYPOINT ["cargo", "run", "--release"]

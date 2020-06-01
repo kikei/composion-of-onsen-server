@@ -1,6 +1,8 @@
+#[macro_use]
+extern crate lazy_static;
+
 extern crate handlebars;
-extern crate r2d2;
-extern crate r2d2_mongodb;
+extern crate elasticsearch;
 
 #[macro_use]
 extern crate log;
@@ -34,7 +36,8 @@ enum Action {
 }
 
 fn app_start() {
-    server::start();
+    // Runtime::new().unwrap().block_on(server::start());
+    server::start()
 }
 
 fn dispatch(args: &Args) {

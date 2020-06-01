@@ -1,8 +1,9 @@
 use std::fs;
 use structopt::StructOpt;
+use tokio::runtime::Runtime;
 
+use crate::utils::elasticsearch;
 use crate::template::{Template};
-use crate::utils::mongodb;
 use crate::models::{self, Models};
 
 #[derive(StructOpt, Debug)]
@@ -46,9 +47,9 @@ pub struct AddArgs {
 //     }
 // }
 
-fn template_show(models: &Models, args: &ShowArgs) {
+async fn template_show<'a>(models: &Models<'a>, args: &ShowArgs) {
     match &args.id {
-        Some(id) => match models::templates::by_id(&models, &id) {
+        Some(id) => match models::templates::by_id(&models, &id).await {
             Ok(Some(t)) => println!("{} {}\n{}",
                                     &t.id.unwrap_or("none".to_string()),
                                     &t.name, &t.body),
@@ -56,18 +57,18 @@ fn template_show(models: &Models, args: &ShowArgs) {
             Err(e) =>
                 println!("Failed to read templates: {}, error: {}", &id, e)
         },
-        None => match models::templates::select(&models) {
+        None => match models::templates::select(&models).await {
             Ok(it) => for t in it {
                 println!("{}: {} ({})",
                          &t.id.unwrap_or("none".to_string()),
-                         &t.name, &t.body.len());
+                         &t.name, &t.body.len())
             },
             Err(e) => println!("Failed to read templates, error: {}", e)
         }
     }
 }
 
-fn template_add(models: &Models, args: &AddArgs) {
+async fn template_add<'a>(models: &Models<'a>, args: &AddArgs) {
     if args.path.is_none() {
         println!("Path required, args: {:?}", args);
         return;
@@ -90,7 +91,7 @@ fn template_add(models: &Models, args: &AddArgs) {
         name: name.to_string(),
         body: body.unwrap()
     };
-    match models::templates::save(models, &t) {
+    match models::templates::save(models, &t).await {
         Ok(t) => println!("Successfully save template: {:?}", t),
         Err(e) => println!("Failed to save template, error: {}", e)
     }
@@ -101,14 +102,18 @@ pub fn run(args: &Action) {
     env_logger::init();
     info!("Log initialized.");
 
-    let db = mongodb::get_unpooled_connection();
+    let db = elasticsearch::get_unpooled_connection();
     if db.is_err() {
         println!("Failed to get connection, error: {}", db.unwrap_err());
         return;
     }
-    let models = models::models(&db.unwrap());
-    match args {
-        Action::Show(args) => template_show(&models, &args),
-        Action::Add(args) => template_add(&models, &args)
-    }
+    Runtime::new().unwrap().block_on(async {
+        let db = db.unwrap();
+        let models = models::models(&db).await;
+        match args {
+            Action::Add(args) => template_add(&models, &args).await,
+            Action::Show(args) => template_show(&models, &args).await,
+        }
+    })
 }
+
