@@ -37,16 +37,6 @@ services:
     #entrypoint: /usr/local/cargo/bin/cargo
     #command: "run app"
     tty: true
-  mongodb:
-    image: mongo:4
-    volumes:
-      - ./data/mongodb:/data/db
-      - ./docker/mongodb:/docker-entrypoint-initdb.d
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin
-      MONGO_INITDB_DATABASE: admin
   elasticsearch:
     build: docker/elasticsearch
     volumes:
