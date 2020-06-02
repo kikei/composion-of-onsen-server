@@ -9,7 +9,7 @@ use crate::analysis::{Analysis, ComponentTable, CellValue, MgMvalMmol};
 use crate::models::{Models};
 // use crate::utils::mongodb::{document_str, document_number};
 use crate::utils::elasticsearch::{
-    SearchResultItem,
+    GetResult, SearchResultItem, OperationResultType,
     Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
 };
 use crate::utils::scrub;
@@ -142,6 +142,15 @@ impl TryFrom<&Value> for ComponentTable {
 //         })
 //     }
 // }
+
+impl TryFrom<&GetResult> for Analysis {
+    type Error = String;
+    fn try_from(value: &GetResult) -> Result<Self, Self::Error> {
+        let mut a = Analysis::try_from(&value._source)?;
+        a.id = Some(value._id.to_string());
+        Ok(a)
+    }
+}
 
 impl TryFrom<&SearchResultItem> for Analysis {
     type Error = String;
@@ -505,10 +514,10 @@ impl From<&CellValue> for Value {
 impl From<&MgMvalMmol> for Value {
     fn from(item: &MgMvalMmol) -> Self {
         let value = json!({
-            KEY_MG: item.mg.clone(),
-            KEY_MVAL: item.mval.clone(),
-            KEY_MVAL_PERCENT: item.mval_percent.clone(),
-            KEY_MMOL: item.mmol.clone()
+            KEY_MG: Value::from(&item.mg),
+            KEY_MVAL: Value::from(&item.mval),
+            KEY_MVAL_PERCENT: Value::from(&item.mval_percent),
+            KEY_MMOL: Value::from(&item.mmol)
         });
         value
     }
@@ -569,7 +578,9 @@ pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
             _ => "desc"
         };
         let result = models.analyses.select(SearchOptions {
-            //sort: Some(format!("{}:{}", &key, &direction)),
+            sort: Some(json!([{
+                key: direction
+            }])),
             from: Some(options.skip),
             size: Some(options.limit),
             ..Default::default()
@@ -625,11 +636,14 @@ pub async fn save<'a>(models: &Models<'a>, a: &Analysis)
     debug!("analyses::save, is_new: {}, value: {}", &is_new, &value);
     let result = if is_new {
         models.analyses
-            .insert(&value, InsertOptions::new(None))
+            .insert(&value, InsertOptions::new(Some(id.as_str())))
             .await
             .map(|r| {
                 debug!("analyses::save, created, result: {:?}", &r);
-                Some(a)
+                match r.result {
+                    OperationResultType::Created => Some(a),
+                    _ => None
+                }
             })
     } else {
         models.analyses
@@ -637,14 +651,10 @@ pub async fn save<'a>(models: &Models<'a>, a: &Analysis)
             .await
             .map(|r| {
                 debug!("analyses::save, updated, result: {:?}", &r);
-                Some(a)
-                /*
-                if r.modified_count > 0 {
-                    Some(a)
-                } else {
-                    None
+                match r.result {
+                    OperationResultType::Updated => Some(a),
+                    _ => None
                 }
-                */
             })
     };
     match result {

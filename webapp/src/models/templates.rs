@@ -4,9 +4,18 @@ use serde_json::{json, Value};
 use crate::models::{Models};
 use crate::template::{self, Template};
 use crate::utils::elasticsearch::{
-    SearchResultItem,
+    GetResult, SearchResultItem,
     Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
 };
+
+impl TryFrom<&GetResult> for Template {
+    type Error = String;
+    fn try_from(value: &GetResult) -> Result<Self, Self::Error> {
+        let mut t = Template::try_from(&value._source)?;
+        t.id = Some(value._id.to_string());
+        Ok(t)
+    }
+}
 
 impl TryFrom<&SearchResultItem> for Template {
     type Error = String;
@@ -22,12 +31,15 @@ impl TryFrom<&Value> for Template {
     fn try_from(value: &Value) -> Result<Self, Self::Error> {
         let obj = value.as_object()
             .ok_or(format!("Failed to get Template from Value: {}", &value))?;
+        let id =
+            obj.get(template::KEY_ID)
+            .and_then(|v| v.as_str()).map(|s| s.to_string());
         let name =
             obj.get(template::KEY_NAME).and_then(|v| v.as_str()).unwrap();
         let body =
             obj.get(template::KEY_BODY).and_then(|v| v.as_str()).unwrap();
         Ok(Template {
-            id: id.map(|s| s.to_string()),
+            id: id,
             name: name.to_string(),
             body: body.to_string()
         })

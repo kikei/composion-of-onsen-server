@@ -10,8 +10,8 @@ use serde_json::json;
 
 use crate::utils::elasticsearch::{Collection};
 
-static INDEX_ANALYSES: &str = "onsen.analyses";
-static INDEX_TEMPLATES: &str = "onsen.templates";
+static INDEX_ANALYSES: &str = "analyses";
+static INDEX_TEMPLATES: &str = "templates";
 
 type Database = Elasticsearch;
 

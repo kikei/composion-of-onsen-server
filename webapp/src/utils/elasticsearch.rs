@@ -4,7 +4,7 @@ use elasticsearch::{
     self,
     Elasticsearch,
     CountParts, GetParts, SearchParts,
-    CreateParts, UpdateParts, DeleteParts, IndexParts,
+    CreateParts, DeleteParts, IndexParts,
     http::{
         headers::{CONTENT_TYPE, HeaderValue},
         transport::Transport
@@ -48,24 +48,32 @@ pub fn get_unpooled_connection() -> Result<DBConnection, elasticsearch::Error>  
 pub trait Operations {
     type Error;
     type Client;
+
     type GetOptions;
+    type GetResult;
 
     type SelectOptions;
     type SelectResult;
 
     type InsertOptions;
+    type InsertResult;
+
     type UpdateOptions;
+    type UpdateResult;
+
     type DeleteOptions;
-    async fn get(&self, o: GetOptions) -> Result<Value, Self::Error>;
+    type DeleteResult;
+
+    async fn get(&self, o: GetOptions) -> Result<Self::GetResult, Self::Error>;
     async fn count(&self) -> Result<u64, Self::Error>;
     async fn select(&self, o: Self::SelectOptions)
                     -> Result<Self::SelectResult, Self::Error>;
     async fn insert(&self, v: &Value, o: Self::InsertOptions)
-                    -> Result<Value, Self::Error>;
+                    -> Result<Self::InsertResult, Self::Error>;
     async fn update(&self, v: &Value, o: Self::UpdateOptions)
-                    -> Result<Value, Self::Error>;
+                    -> Result<Self::UpdateResult, Self::Error>;
     async fn delete(&self, o: Self::DeleteOptions)
-                    -> Result<Value, Self::Error>;
+                    -> Result<Self::DeleteResult, Self::Error>;
 }
 
 pub struct GetOptions {
@@ -80,13 +88,23 @@ impl GetOptions {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct GetResult {
+    pub _id: String,
+    pub _index: String,
+    pub _primary_term: u64,
+    pub _seq_no: u64,
+    pub _source: Value,
+}
+
+#[derive(Serialize, Clone, Debug)]
 pub struct SearchOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub q: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub sort: Option<String>,
+    pub sort: Option<Value>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<u32>,
@@ -120,6 +138,51 @@ impl InsertOptions {
     }
 }
 
+/// {
+///     "_id": "hinodeonsenkinokonosato",
+///     "_index": "analyses",
+///     "_primary_term": 1,
+///     "_seq_no": 3,
+///     "_shards": {
+///         "failed": 0,
+///         "successful": 1,
+///         "total": 2
+///     },
+///     "_type": "_doc",
+///     "_version": 1,
+///     "result": "created"
+/// }
+#[derive(Deserialize, Debug)]
+#[allow(dead_code)]
+pub struct OperationResult {
+    pub _id: String,
+    pub _index: String,
+    pub _primary_term: u64,
+    pub _seq_no: u64,
+    pub _shards: ResultShards,
+    pub _type: String,
+    pub _version: u64,
+    pub result: OperationResultType,
+}
+
+#[allow(dead_code)]
+#[derive(Deserialize, Debug)]
+pub struct ResultShards {
+    pub failed: u64,
+    pub successful: u64,
+    pub total: u64,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
+pub enum OperationResultType {
+    Created,
+    Updated,
+    Deleted,
+    Noop,
+}
+
+
 #[derive(Serialize)]
 pub struct UpdateOptions {
     #[serde(skip)]
@@ -148,37 +211,33 @@ struct CountResult {
 // Search API
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct SearchResult {
-    #[allow(dead_code)]
     pub took: u64,
-    #[allow(dead_code)]
     pub timed_out: bool,
     pub hits: SearchResultHits
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct SearchResultHits {
-    #[allow(dead_code)]
     pub total: SearchResultHitsTotal,
     pub hits: Vec<SearchResultItem>
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct SearchResultHitsTotal {
-    #[allow(dead_code)]
     pub value: u64,
-    #[allow(dead_code)]
     pub relation: String
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct SearchResultItem {
-    #[allow(dead_code)]
     pub _index: String,
-    #[allow(dead_code)]
     pub _id: String,
-    #[allow(dead_code)]
-    pub _score: f64,
+    pub _score: Option<f64>,
     pub _source: Value
 }
 
@@ -188,14 +247,20 @@ impl<'a> Operations for Collection<'a> {
     type Error = elasticsearch::Error;
     type Client = Elasticsearch;
 
+    type GetOptions = GetOptions;
+    type GetResult = GetResult;
+
     type SelectOptions = SearchOptions;
     type SelectResult = SearchResult;
 
-    type GetOptions = GetOptions;
     type InsertOptions = InsertOptions;
-    type UpdateOptions = UpdateOptions;
-    type DeleteOptions = DeleteOptions;
+    type InsertResult = OperationResult;
 
+    type UpdateOptions = UpdateOptions;
+    type UpdateResult = OperationResult;
+
+    type DeleteOptions = DeleteOptions;
+    type DeleteResult = OperationResult;
 
     async fn count(&self) -> Result<u64, Self::Error> {
         self.client
@@ -209,12 +274,13 @@ impl<'a> Operations for Collection<'a> {
     }
 
     async fn get(&self, options: Self::GetOptions)
-                 -> Result<Value, Self::Error> {
+                 -> Result<Self::GetResult, Self::Error> {
         self.client
             .get(GetParts::IndexId(self.name, &options.id))
             .send()
             .and_then(|r| async {
-                r.json::<Value>().await
+                r.error_for_status_code_ref()?;
+                r.json::<Self::GetResult>().await
             })
             .await
     }
@@ -222,13 +288,23 @@ impl<'a> Operations for Collection<'a> {
     async fn select(&self, options: Self::SelectOptions)
         -> Result<Self::SelectResult, Self::Error>
     {
-        let body = serde_json::to_string(&options).unwrap();
         debug!("Search elasticsearch, body: {}, headers: {}: {:?}",
-               &body, CONTENT_TYPE, APPLICATION_JSON.clone());
+               serde_json::to_string(&options).unwrap(),
+               CONTENT_TYPE, APPLICATION_JSON.clone());
         self.client
             .search(SearchParts::Index(&[self.name]))
             .header(CONTENT_TYPE, APPLICATION_JSON.clone())
-            // .body(body)
+            .body(options.clone())
+            .send()
+            .and_then(|r| async {
+                debug!("Response: {:?}", r.text().await);
+                Ok(())
+            })
+            .await;
+        self.client
+            .search(SearchParts::Index(&[self.name]))
+            .header(CONTENT_TYPE, APPLICATION_JSON.clone())
+            .body(options)
             .send()
             .and_then(|r| async {
                 r.error_for_status_code_ref()?;
@@ -238,7 +314,7 @@ impl<'a> Operations for Collection<'a> {
     }
 
     async fn insert(&self, value: &Value, options: Self::InsertOptions)
-        -> Result<Value, Self::Error>
+        -> Result<Self::InsertResult, Self::Error>
     {
         match options.id {
             None => {
@@ -247,7 +323,7 @@ impl<'a> Operations for Collection<'a> {
                     .body(value)
                     .send()
                     .and_then(|r| async {
-                        r.json::<Value>().await
+                        r.json::<Self::InsertResult>().await
                     })
                     .await
             },
@@ -257,8 +333,7 @@ impl<'a> Operations for Collection<'a> {
                     .body(value)
                     .send()
                     .and_then(|r| async {
-                        r.json::<Value>().await
-
+                        r.json::<Self::InsertResult>().await
                     })
                     .await
             }
@@ -266,26 +341,27 @@ impl<'a> Operations for Collection<'a> {
     }
 
     async fn update(&self, value: &Value, options: Self::UpdateOptions)
-        -> Result<Value, Self::Error>
+        -> Result<Self::UpdateResult, Self::Error>
     {
         self.client
-            .update(UpdateParts::IndexId(self.name, &options.id))
+            .index(IndexParts::IndexId(self.name, &options.id))
             .body(value)
             .send()
             .and_then(|r| async {
-                r.json::<Value>().await
+                r.error_for_status_code_ref()?;
+                r.json::<Self::UpdateResult>().await
             })
             .await
     }
 
     async fn delete(&self, options: Self::DeleteOptions)
-        -> Result<Value, Self::Error>
+        -> Result<Self::DeleteResult, Self::Error>
     {
         self.client
             .delete(DeleteParts::IndexId(self.name, &options.id))
             .send()
             .and_then(|r| async {
-                r.json::<Value>().await
+                r.json::<Self::DeleteResult>().await
 
             })
             .await
