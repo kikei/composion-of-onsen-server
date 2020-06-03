@@ -31,6 +31,8 @@ struct AnalysisListQuery {
     #[serde(flatten)]
     pub select: analyses::SelectOptions
     */
+    #[serde(rename = "q", default)]
+    pub query: Option<String>,
     #[serde(rename = "p", default)]
     pub page: u32,
     #[serde(rename = "l", default = "default_limit")]
@@ -48,6 +50,7 @@ fn default_direction() -> i32 { -1 }
 impl From<&AnalysisListQuery> for analyses::SelectOptions {
     fn from(a: &AnalysisListQuery) -> Self {
         analyses::SelectOptions {
+            query: a.query.clone(),
             skip: a.page * a.limit,
             limit: a.limit,
             order_by: a.order_by,

@@ -101,7 +101,7 @@ pub struct GetResult {
 #[derive(Serialize, Clone, Debug)]
 pub struct SearchOptions {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub q: Option<String>,
+    pub query: Option<Value>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sort: Option<Value>,
@@ -116,7 +116,7 @@ pub struct SearchOptions {
 impl Default for SearchOptions {
     fn default() -> Self {
         SearchOptions {
-            q: None,
+            query: None,
             sort: None,
             from: None,
             size: None

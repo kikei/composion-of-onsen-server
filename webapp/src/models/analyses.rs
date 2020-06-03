@@ -42,6 +42,15 @@ const KEY_CREATED_AT: &str = "_crat";
 const KEY_NUMBER: &str = "n";
 const KEY_TEXT: &str = "t";
 
+const KEY_FIELDS_SEARCHABLE: &'static [&'static str] =
+    &["no", "name", "location",
+      "facilityName", "roomName", "applicantAddress", "applicantName",
+      "quality",
+      "investigator", "perception",
+      "tester", "testedPerception",
+      "heating", "water", "circulation", "chlorination", "additive",
+      "header", "footer"];
+
 /**
  * Conversions from MongoDB object to Analysis.
  */
@@ -554,6 +563,7 @@ pub enum SortKey {
 
 #[derive(Debug)]
 pub struct SelectOptions {
+    pub query: Option<String>,
     pub skip: u32,
     pub limit: u32,
     pub order_by: SortKey,
@@ -569,6 +579,14 @@ pub async fn count_total<'a>(models: &Models<'a>) -> Result<u64, String> {
 
 pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
     Result<impl Iterator<Item=Analysis>, String> {
+        let query = options.query.as_ref().map(|t| {
+            json!({
+                "multi_match": {
+                    "query": t.as_str(),
+                    "fields": KEY_FIELDS_SEARCHABLE
+                }
+            })
+        });
         let key = match &options.order_by {
             SortKey::Id => KEY_ID,
             SortKey::LastModified => KEY_LAST_MODIFIED
@@ -578,6 +596,7 @@ pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
             _ => "desc"
         };
         let result = models.analyses.select(SearchOptions {
+            query: query,
             sort: Some(json!([{
                 key: direction
             }])),
