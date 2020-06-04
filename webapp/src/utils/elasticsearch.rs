@@ -1,9 +1,9 @@
 use async_trait::async_trait;
-use futures::{future::TryFutureExt};
+use futures::prelude::*;
 use elasticsearch::{
     self,
     Elasticsearch,
-    CountParts, GetParts, SearchParts,
+    CountParts, GetParts, SearchParts, ScrollParts,
     CreateParts, DeleteParts, IndexParts,
     http::{
         headers::{CONTENT_TYPE, HeaderValue},
@@ -11,7 +11,7 @@ use elasticsearch::{
     }
 };
 use serde::{self, Deserialize, Serialize};
-use serde_json::value::{Value};
+use serde_json::{json, Value};
 
 pub type DBConnectionPool = Elasticsearch;
 pub type DBConnection = Elasticsearch;
@@ -215,7 +215,8 @@ struct CountResult {
 pub struct SearchResult {
     pub took: u64,
     pub timed_out: bool,
-    pub hits: SearchResultHits
+    pub hits: SearchResultHits,
+    pub _scroll_id: Option<String>
 }
 
 #[derive(Deserialize)]
@@ -365,5 +366,54 @@ impl<'a> Operations for Collection<'a> {
 
             })
             .await
+    }
+}
+
+#[async_trait]
+pub trait Scroll {
+    type Error;
+    type Client;
+    type Item;
+
+    // TODO want to return Result<impl Stream<Item = Self::Item>, Self::Error>>
+    async fn scroll(&self, scroll_id: Option<&str>)
+                    -> Result<SearchResult, Self::Error>;
+}
+
+#[async_trait]
+impl<'a> Scroll for Collection<'a> {
+    type Error = elasticsearch::Error;
+    type Client = Elasticsearch;
+    type Item = SearchResultItem;
+
+    async fn scroll(&self, scroll_id: Option<&str>)
+                    -> Result<SearchResult, Self::Error>
+    {
+        let index_name = &[self.name];
+        match scroll_id {
+            None => {
+                self.client
+                    .search(SearchParts::Index(index_name))
+                    .scroll("1m")
+                    .send()
+                    .and_then(|r| async {
+                        r.error_for_status_code_ref()?;
+                        r.json::<SearchResult>().await
+                    }).await
+            },
+            Some(scroll_id) => {
+                self.client
+                    .scroll(ScrollParts::None)
+                    .body(json!({
+                        "scroll": "1m",
+                        "scroll_id": scroll_id
+                    }))
+                    .send()
+                    .and_then(|r| async {
+                        r.error_for_status_code_ref()?;
+                        r.json::<SearchResult>().await
+                    }).await
+            }
+        }
     }
 }
