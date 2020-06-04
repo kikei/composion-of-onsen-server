@@ -211,7 +211,7 @@ struct CountResult {
 
 // Search API
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct SearchResult {
     pub took: u64,
@@ -220,21 +220,21 @@ pub struct SearchResult {
     pub _scroll_id: Option<String>
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct SearchResultHits {
     pub total: SearchResultHitsTotal,
     pub hits: Vec<SearchResultItem>
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct SearchResultHitsTotal {
     pub value: u64,
     pub relation: String
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[allow(dead_code)]
 pub struct SearchResultItem {
     pub _index: String,

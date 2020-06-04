@@ -123,21 +123,18 @@ async fn list_analysis(query: web::Query<AnalysisListQuery>,
     let models = Models::new(pool.get_ref());
     let query = &query.into_inner();
     let options = analyses::SelectOptions::from(query);
-    // TODO Run parellely
-    let total = models::analyses::count_total(&models).await;
     let result = models::analyses::select(&models, &options).await;
-    match (total, result) {
-        (Ok(total), Ok(ans)) => {
+    match result {
+        Ok(ans) => {
             let json = AnalysisList {
-                total: total as u32,
+                total: ans.total,
                 page: query.page,
                 limit: query.limit,
-                analysis: ans.collect::<Vec<Analysis>>()
+                analysis: ans.items.collect::<Vec<Analysis>>()
             };
             HttpResponse::Ok().json(json)
         },
-        (Err(e), _) |
-        (_, Err(e)) => {
+        Err(e) => {
             warn!("Failed to list analyses, e: {}", e);
             HttpResponse::NotFound().finish()
         }

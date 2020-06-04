@@ -571,6 +571,12 @@ pub struct SelectOptions {
     pub direction: i32
 }
 
+pub struct SelectResult {
+    pub total: u32,
+    //pub items: impl Iterator<Item = Analysis>
+    pub items: Box<dyn Iterator<Item = Analysis>>
+}
+
 pub async fn setup<'a>(models: &Models<'a>) -> Result<String, String> {
     models.analyses
         .setup(SetupOptions::new(json!({
@@ -614,7 +620,7 @@ pub async fn count_total<'a>(models: &Models<'a>) -> Result<u64, String> {
 }
 
 pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
-    Result<impl Iterator<Item=Analysis>, String> {
+    Result<SelectResult, String> {
         let query = options.query.as_ref().map(|t| {
             json!({
                 "multi_match": {
@@ -640,10 +646,16 @@ pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
             size: Some(options.limit),
             ..Default::default()
         }).await;
+        debug!("analyses::select, result: {:?}", &result);
         match result {
-            Ok(result) => Ok(result.hits.hits.into_iter().filter_map(|row| {
-                Analysis::try_from(&row).ok()
-            }).into_iter()),
+            Ok(result) => Ok(SelectResult {
+                total: result.hits.total.value as u32,
+                items: Box::new(result.hits.hits
+                                .into_iter()
+                                .filter_map(|row| {
+                                    Analysis::try_from(&row).ok()
+                                }).into_iter())
+            }),
             Err(e) => Err(String::from(format!("{}", e)))
         }
 }
