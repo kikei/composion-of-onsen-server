@@ -295,16 +295,6 @@ impl<'a> Operations for Collection<'a> {
         self.client
             .search(SearchParts::Index(&[self.name]))
             .header(CONTENT_TYPE, APPLICATION_JSON.clone())
-            .body(options.clone())
-            .send()
-            .and_then(|r| async {
-                debug!("Response: {:?}", r.text().await);
-                Ok(())
-            })
-            .await;
-        self.client
-            .search(SearchParts::Index(&[self.name]))
-            .header(CONTENT_TYPE, APPLICATION_JSON.clone())
             .body(options)
             .send()
             .and_then(|r| async {
