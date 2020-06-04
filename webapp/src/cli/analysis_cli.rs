@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use structopt::StructOpt;
 use tokio::runtime::Runtime;
 
@@ -45,7 +46,8 @@ fn analysis_all() {
                    &result.hits.total.value);
             count += len;
             while let Some(a) = result.hits.hits.pop() {
-                println!("{}", &a._source);
+                let a = Analysis::try_from(&a._source).unwrap();
+                println!("{}", serde_json::to_string(&a).unwrap());
             }
             result = models.analyses
                 .scroll(Some(result._scroll_id.unwrap().as_str()))
