@@ -109,7 +109,7 @@ pub fn run(args: &Action) {
     }
     Runtime::new().unwrap().block_on(async {
         let db = db.unwrap();
-        let models = models::models(&db).await;
+        let models = Models::new(&db);
         match args {
             Action::Add(args) => template_add(&models, &args).await,
             Action::Show(args) => template_show(&models, &args).await,

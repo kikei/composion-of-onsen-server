@@ -4,7 +4,7 @@ use actix_web::{
 use listenfd::ListenFd;
 use serde::{Deserialize, Serialize};
 
-use crate::models::{self, analyses};
+use crate::models::{self, Models, analyses};
 use crate::utils;
 use crate::utils::elasticsearch::{DBConnectionPool, create_pool};
 use crate::template::{Template, Render};
@@ -81,7 +81,7 @@ async fn add_analysis(json: web::Json<Analysis>,
                       pool: web::Data<DBConnectionPool>)
     -> impl Responder {
     println!("Start add_analysis");
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let a = &json.into_inner();
     match a.id {
         None => {
@@ -101,7 +101,7 @@ async fn update_analysis(info: web::Path<AnalysisPath>,
                    pool: web::Data<DBConnectionPool>)
                    -> impl Responder {
     println!("Start add_analysis");
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let a = &json.into_inner();
     match &a.id {
         Some(id) if id.clone() == info.id => {
@@ -120,7 +120,7 @@ async fn update_analysis(info: web::Path<AnalysisPath>,
 
 async fn list_analysis(query: web::Query<AnalysisListQuery>,
                  pool: web::Data<DBConnectionPool>) -> impl Responder {
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let query = &query.into_inner();
     let options = analyses::SelectOptions::from(query);
     // TODO Run parellely
@@ -149,7 +149,7 @@ async fn get_analysis(info: web::Path<AnalysisPath>,
                 pool: web::Data<DBConnectionPool>)
                 -> impl Responder {
     println!("Start get_analysis, info: {:?}", &info);
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let result = models::analyses::by_id(&models, &info.id).await;
     match result {
         Ok(Some(a)) => {
@@ -187,7 +187,7 @@ async fn add_template(json: web::Json<Template>,
                 pool: web::Data<DBConnectionPool>)
                 -> impl Responder {
     println!("Start add_template");
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let t = models::templates::save(&models, &json.into_inner()).await;
     match t {
         Ok(a) => HttpResponse::Ok().json(&a),
@@ -200,7 +200,7 @@ async fn add_template(json: web::Json<Template>,
 
 // GET /templates/
 async fn list_templates(pool: web::Data<DBConnectionPool>) -> impl Responder {
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let result = models::templates::select(&models).await;
     match result {
         Ok(ts) => {
@@ -220,7 +220,7 @@ async fn get_template(info: web::Path<AnalysisPath>,
                 pool: web::Data<DBConnectionPool>)
                 -> impl Responder {
     println!("Start get_template, info: {:?}", &info);
-    let models = models::models(pool.get_ref()).await;
+    let models = Models::new(pool.get_ref());
     let result = models::templates::by_id(&models, &info.id).await;
     match result {
         Ok(Some(i)) => HttpResponse::Ok().json(i),
@@ -261,6 +261,7 @@ pub async fn start() -> () {
         return;
     }
     let pool = pool.unwrap();
+    Models::new(&pool).setup().await;
     // Setup server
     let mut server = HttpServer::new(move || {
         App::new()

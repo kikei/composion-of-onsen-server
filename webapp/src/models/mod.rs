@@ -1,12 +1,7 @@
 pub mod analyses;
 pub mod templates;
 
-use futures::{future::TryFutureExt};
-use elasticsearch::{
-    Elasticsearch,
-    indices::IndicesCreateParts
-};
-use serde_json::json;
+use elasticsearch::Elasticsearch;
 
 use crate::utils::elasticsearch::{Collection};
 
@@ -20,54 +15,22 @@ pub struct Models<'a> {
     pub templates: Collection<'a>
 }
 
-pub async fn models<'a>(db: &'a Database) -> Models<'a> {
-    let result = db.indices()
-        .create(IndicesCreateParts::Index(INDEX_ANALYSES))
-        .body(json!({
-            "settings": {
-                "index": {"sort.field": "_lamo", "sort.order": "desc"},
+impl<'a> Models<'a> {
+    pub fn new(db: &'a Database) -> Self {
+        Models {
+            analyses : Collection {
+                client: db,
+                name: INDEX_ANALYSES
             },
-            "mappings": {
-                "properties": {
-                    "_lamo": {"type": "float"},
-                    "no": {"type": "text", "analyzer": "kuromoji"},
-                    "name": {"type": "text", "analyzer": "kuromoji"},
-                    "location": {"type": "text", "analyzer": "kuromoji"},
-                    "facilityName": {"type": "text", "analyzer": "kuromoji"},
-                    "roomName": {"type": "text", "analyzer": "kuromoji"},
-                    "applicantAddress": {"type": "text", "analyzer": "kuromoji"},
-                    "applicantName": {"type": "text", "analyzer": "kuromoji"},
-                    "quality": {"type": "text", "analyzer": "kuromoji"},
-                    "investigator": {"type": "text", "analyzer": "kuromoji"},
-                    "perception": {"type": "text", "analyzer": "kuromoji"},
-                    "tester": {"type": "text", "analyzer": "kuromoji"},
-                    "testedPerception": {"type": "text", "analyzer": "kuromoji"},
-                    "heating": {"type": "text", "analyzer": "kuromoji"},
-                    "water": {"type": "text", "analyzer": "kuromoji"},
-                    "circulation": {"type": "text", "analyzer": "kuromoji"},
-                    "chlorination": {"type": "text", "analyzer": "kuromoji"},
-                    "additive": {"type": "text", "analyzer": "kuromoji"},
-                    "header": {"type": "text", "analyzer": "kuromoji"},
-                    "footer": {"type": "text", "analyzer": "kuromoji"},
-                }
+            templates: Collection {
+                client: db,
+                name: INDEX_TEMPLATES
             }
-        }))
-        .send()
-        .and_then(|r| async { r.text().await })
-        .await; 
-    debug!("Create indices, result: {:?}", &result);
-    if let Err(e) = result {
-        error!("Failed to setup index, error: {}", &e);
-    }
-    Models {
-        analyses : Collection {
-            client: db,
-            name: INDEX_ANALYSES
-        },
-        templates: Collection {
-            client: db,
-            name: INDEX_TEMPLATES
         }
     }
-}
 
+    pub async fn setup(self: &Self) {
+        let result = analyses::setup(self).await;
+        println!("Models::setup, result: {:?}", &result)
+    }
+}

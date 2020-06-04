@@ -5,6 +5,7 @@ use elasticsearch::{
     Elasticsearch,
     CountParts, GetParts, SearchParts, ScrollParts,
     CreateParts, DeleteParts, IndexParts,
+    indices::IndicesCreateParts,
     http::{
         headers::{CONTENT_TYPE, HeaderValue},
         transport::Transport
@@ -241,6 +242,51 @@ pub struct SearchResultItem {
     pub _score: Option<f64>,
     pub _source: Value
 }
+
+#[async_trait]
+pub trait Setup {
+    type Error;
+    type Client;
+    type SetupOptions;
+    type SetupResult;
+    
+    async fn setup(&self, options: Self::SetupOptions)
+                   -> Result<Self::SetupResult, Self::Error>;
+}
+
+pub struct SetupOptions {
+    value: Value
+}
+
+impl SetupOptions {
+    pub fn new(value: Value) -> Self {
+        Self {
+            value: value
+        }
+    }
+}
+
+#[async_trait]
+impl<'a> Setup for Collection<'a> {
+    type Error = elasticsearch::Error;
+    type Client = Elasticsearch;
+    type SetupOptions = SetupOptions;
+    type SetupResult = String;
+    
+    async fn setup(&self, options: Self::SetupOptions)
+                   -> Result<Self::SetupResult, Self::Error>
+    {
+        self.client.indices()
+            .create(IndicesCreateParts::Index(self.name))
+            .body(options.value)
+            .send()
+            .and_then(|r| async {
+                r.text().await
+            })
+            .await
+    }
+}
+
 
 // Operations
 #[async_trait]

@@ -10,6 +10,7 @@ use crate::models::{Models};
 // use crate::utils::mongodb::{document_str, document_number};
 use crate::utils::elasticsearch::{
     GetResult, SearchResultItem, OperationResultType,
+    Setup, SetupOptions,
     Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
 };
 use crate::utils::scrub;
@@ -568,6 +569,41 @@ pub struct SelectOptions {
     pub limit: u32,
     pub order_by: SortKey,
     pub direction: i32
+}
+
+pub async fn setup<'a>(models: &Models<'a>) -> Result<String, String> {
+    models.analyses
+        .setup(SetupOptions::new(json!({
+            "settings": {
+                "index": {"sort.field": "_lamo", "sort.order": "desc"},
+            },
+            "mappings": {
+                "properties": {
+                    "_lamo": {"type": "float"},
+                    "no": {"type": "text", "analyzer": "kuromoji"},
+                    "name": {"type": "text", "analyzer": "kuromoji"},
+                    "location": {"type": "text", "analyzer": "kuromoji"},
+                    "facilityName": {"type": "text", "analyzer": "kuromoji"},
+                    "roomName": {"type": "text", "analyzer": "kuromoji"},
+                    "applicantAddress": {"type": "text", "analyzer": "kuromoji"},
+                    "applicantName": {"type": "text", "analyzer": "kuromoji"},
+                    "quality": {"type": "text", "analyzer": "kuromoji"},
+                    "investigator": {"type": "text", "analyzer": "kuromoji"},
+                    "perception": {"type": "text", "analyzer": "kuromoji"},
+                    "tester": {"type": "text", "analyzer": "kuromoji"},
+                    "testedPerception": {"type": "text", "analyzer": "kuromoji"},
+                    "heating": {"type": "text", "analyzer": "kuromoji"},
+                    "water": {"type": "text", "analyzer": "kuromoji"},
+                    "circulation": {"type": "text", "analyzer": "kuromoji"},
+                    "chlorination": {"type": "text", "analyzer": "kuromoji"},
+                    "additive": {"type": "text", "analyzer": "kuromoji"},
+                    "header": {"type": "text", "analyzer": "kuromoji"},
+                    "footer": {"type": "text", "analyzer": "kuromoji"},
+                }
+            }
+        })))
+        .await
+        .map_err(|e| String::from(format!("{}", e)))
 }
 
 pub async fn count_total<'a>(models: &Models<'a>) -> Result<u64, String> {

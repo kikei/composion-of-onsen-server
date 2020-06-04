@@ -3,7 +3,7 @@ use structopt::StructOpt;
 use tokio::runtime::Runtime;
 
 use crate::analysis::Analysis;
-use crate::models;
+use crate::models::Models;
 use crate::utils::elasticsearch::{self, Scroll};
 use crate::utils::scrub::scrub;
 
@@ -34,7 +34,7 @@ fn analysis_all() {
     }
     Runtime::new().unwrap().block_on(async {
         let db = db.unwrap();
-        let models = models::models(&db).await;
+        let models = Models::new(&db);
         let mut count = 0;
         debug!("analysis_cli::analysis_all, fetching all rows");
         let mut result = models.analyses.scroll(None).await.unwrap();
