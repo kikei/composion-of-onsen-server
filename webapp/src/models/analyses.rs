@@ -180,11 +180,13 @@ impl TryFrom<&Value> for Analysis {
         let id = obj.get(KEY_ID).and_then(|v| v.as_str()).map(|s| s.to_string());
         let name = obj.get(KEY_NAME).and_then(|v| v.as_str())
             .ok_or("BUG: missing name?")?;
-        let gensen_yield = obj.get(KEY_YIELD).and_then(|v| v.as_f64())
-            .map_or_else(|| CellValue::Null, CellValue::Number);
+        let gensen_yield = obj.get(KEY_YIELD)
+            .and_then(|v| CellValue::try_from(v).ok())
+            .unwrap_or(CellValue::Null);
         let temperature = obj.get(KEY_TEMPERATURE).and_then(|v| v.as_f64());
-        let ph = obj.get(KEY_PH).and_then(|v| v.as_f64())
-            .map_or_else(|| CellValue::Null, CellValue::Number);
+        let ph = obj.get(KEY_PH)
+            .and_then(|v| CellValue::try_from(v).ok())
+            .unwrap_or(CellValue::Null);
         // let positive_ion = ComponentTable::try_from(obj.get(KEY_POSITIVE_ION))?;
         // let negative_ion = ComponentTable::try_from(obj.get(KEY_NEGATIVE_ION))?;
         // let undissociated = ComponentTable::try_from(obj.get(KEY_UNDISSOCIATED))?;
