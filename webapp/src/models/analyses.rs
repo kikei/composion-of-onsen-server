@@ -581,7 +581,11 @@ pub async fn setup<'a>(models: &Models<'a>) -> Result<String, String> {
     models.analyses
         .setup(SetupOptions::new(json!({
             "settings": {
-                "index": {"sort.field": "_lamo", "sort.order": "desc"},
+                "index": {
+                    "sort.field": "_lamo",
+                    "sort.order": "desc",
+                    "mapping.total_fields.limit": 2048
+                },
             },
             "mappings": {
                 "properties": {
