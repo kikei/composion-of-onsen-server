@@ -5,6 +5,7 @@ use listenfd::ListenFd;
 use serde::{Deserialize, Serialize};
 
 use crate::models::{self, Models, analyses};
+use crate::services::{comment_service};
 use crate::utils;
 use crate::utils::elasticsearch::{DBConnectionPool, create_pool};
 use crate::template::{Template, Render};
@@ -276,6 +277,12 @@ pub async fn start() -> () {
                     .route("/", web::post().to(add_template))
                     .route("/", web::get().to(list_templates))
                     .route("/{id}", web::get().to(get_template))
+            )
+            .service(comment_service::service(web::scope("/comments")))
+            .service(
+                web::scope("/static")
+                    .service(comment_service::service_static(
+                        web::scope("/comments")))
             )
             .service(
                 web::scope("/debug")

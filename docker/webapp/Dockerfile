@@ -7,8 +7,8 @@ ARG UNAME
 ENV UID $UID
 ENV GID $GID
 ENV UNAME $UNAME
-ENV DATADIR /mnt
-ENV DICDIR=/var/lib/mecab/dic/mydic
+ENV DATADIR /data
+ENV DICDIR /var/lib/mecab/dic/mydic
 
 #COPY . /usr/src/app
 
@@ -17,6 +17,7 @@ RUN rm -rf /usr/src/app/target
 
 VOLUME /usr/src/app
 VOLUME $DICDIR
+VOLUME $DATADIR
 
 WORKDIR /usr/src/app
 
@@ -27,6 +28,8 @@ RUN apt-get update && apt-get install -y \
 # User setup
 RUN groupadd -g $GID $UNAME
 RUN useradd -u $UID -g $UNAME -m $UNAME
+
+RUN chmod 0777 $DATADIR
 
 USER $UNAME
 

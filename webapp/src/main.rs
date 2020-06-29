@@ -12,8 +12,13 @@ use structopt::StructOpt;
 mod utils;
 mod template;
 mod analysis;
+mod comment;
+mod photo;
+mod token;
+
 mod models;
 mod server;
+mod services;
 mod cli;
 
 use cli::{template_cli, analysis_cli};

@@ -204,6 +204,14 @@ pub struct DeleteOptions {
     id: String
 }
 
+impl DeleteOptions {
+    pub fn new(id: &str) -> Self {
+        DeleteOptions {
+            id: id.to_string()
+        }
+    }
+}
+
 #[derive(Deserialize)]
 struct CountResult {
     count: u64
