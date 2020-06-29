@@ -112,10 +112,10 @@ pub struct Analysis {
     #[serde(flatten)]
     pub meta: HashMap<String, String>,
 
-    #[serde(rename = "_lastModified")]
+    #[serde(rename = "lastModified")]
     pub last_modified: Option<f64>,          // Timestamp [ms]
 
-    #[serde(rename = "_createdAt")]
+    #[serde(rename = "createdAt")]
     pub created_at: Option<f64>              // Timestamp [ms]
 }
 
