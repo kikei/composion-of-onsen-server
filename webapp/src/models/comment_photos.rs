@@ -114,6 +114,7 @@ pub async fn setup<'a>(_models: &Models<'a>) -> Result<(), String> {
         .map_err(|e| format!("Unable to setup comment_images, e: {}", &e))
 }
 
+#[derive(Debug)]
 pub struct PhotoPath {
     pub analysis: String,
     pub comment: String,
@@ -208,17 +209,20 @@ pub async fn delete<'a>(_: &Models<'a>, photos: &Vec<Photo>) -> Result<(), Strin
         let path = PhotoPath::try_from(photo.path.clone())
             .map_err(|e| format!("Cannot get PhotoPath from {:?}, ee: {}",
                                  &photo.path, &e))?;
+        debug!("Delete path: {:?}, directory: {:?}",
+               &path, &path.directory());
         let current = Path::new(DIRECTORY_UPLOAD)
             .join(path.directory().as_path());
         let dest = Path::new(DIRECTORY_DELETED)
             .join(path.directory().as_path());
         // TODO should be executed asynchronously?
-        std::fs::rename(current, dest)
-            .map_err(|e| format!("Failed to rename {}/{} -> {}/{}, e: {}",
-                                 DIRECTORY_UPLOAD,
-                                 &path.directory().as_path().display(),
-                                 DIRECTORY_DELETED,
-                                 &path.directory().as_path().display(),
-                                 &e))
+        // Ensure destination comment directory to move images
+        std::fs::create_dir_all(dest.parent().unwrap())
+            .map_err(|e| format!("Failed to create directory, \
+                                  path: {:?}, e: {}", &dest, &e))?;
+        // Move image directory (comment directory will be left)
+        std::fs::rename(&current, &dest)
+            .map_err(|e| format!("Failed to rename {:?} -> {:?}, e: {}",
+                                 &current, &dest, &e))
     }
 }
