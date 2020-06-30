@@ -143,14 +143,14 @@ impl TryFrom<PathBuf> for PhotoPath {
 
     fn try_from(item: PathBuf) -> Result<Self, Self::Error> {
         let parts = item.iter().map(|p| p.to_str().unwrap()).collect::<Vec<&str>>();
-        if parts.len() != 4 {
+        if parts.len() < 4 {
             return Err(format!("Cannot convert to PhotoPath, parts: {:?}",
                                &parts));
         }
         Ok(PhotoPath {
-            analysis: parts[parts.len() - 3].to_string(),
-            comment: parts[parts.len() - 2].to_string(),
-            id: parts[parts.len() - 1].to_string()
+            analysis: parts[parts.len() - 4].to_string(),
+            comment: parts[parts.len() - 3].to_string(),
+            id: parts[parts.len() - 2].to_string()
         })
     }
 }
