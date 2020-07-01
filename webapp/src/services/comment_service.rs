@@ -23,7 +23,7 @@ use crate::models::{
 use crate::utils::{
     identifier::Generate,
     elasticsearch::DBConnectionPool,   
-    web::{read_content_length, read_body, save_uploaded_file,
+    web::{read_content_length, save_uploaded_file,
           SaveUploadedFileOptions},
     image::ImagePath
 };
@@ -34,13 +34,6 @@ const IMAGE_BYTES_MIN: usize = 1024 * 10;
 
 const DIRECTORY_UPLOAD_TMP: &str = "/tmp/comments/images";
 
-const NAME_ID: &str = "id";
-const NAME_PARENTID: &str = "parentId";
-const NAME_USERNAME: &str = "username";
-const NAME_EMAIL: &str = "email";
-const NAME_WEB: &str = "web";
-const NAME_BODY: &str = "body";
-const NAME_AUTH: &str = "auth";
 const NAME_IMAGE0: &str = "images0";
 const NAME_IMAGE1: &str = "images1";
 const NAME_IMAGE2: &str = "images2";
@@ -49,34 +42,57 @@ const NAME_IMAGE4: &str = "images4";
 
 // Structures
 
-#[derive(Debug)]
-struct CommentPayload {
+#[derive(Deserialize, Debug)]
+struct CommentRequest {
     id: Option<String>,
+    #[serde(rename = "parentId")]
     parent_id: String,
     username: String,
     email: Option<String>,
     web: Option<String>,
     body: String,
-    images: Vec<PathBuf>,
-    auth: Option<String>,
+    #[serde(rename = "lastModified")]
     last_modified: Option<f64>,
+    #[serde(rename = "createdAt")]
     created_at: Option<f64>
 }
 
-impl Default for CommentPayload {
-    fn default() -> Self {
-        CommentPayload {
-            id: None,
-            parent_id: String::new(),
-            username: String::new(),
-            email: None,
-            web: None,
-            body: String::new(),
+impl CommentRequest {
+    fn to_comment(self: Self, auth: &Authentication) -> Comment {
+        Comment {
+            id: self.id,
+            parent_id: self.parent_id,
+            username: self.username,
+            email: self.email,
+            web: self.web,
+            body: self.body,
             images: Vec::new(),
-            auth: None,
-            last_modified: None,
-            created_at: None
+            auth: auth.clone(),
+            last_modified: now_nanos(),
+            created_at: self.created_at.unwrap_or(now_nanos())
         }
+    }
+}
+
+#[derive(Debug)]
+struct ImageUploadRequest {
+    images: Vec<PathBuf>,
+}
+
+impl ImageUploadRequest {
+    fn paths(self: &Self, comment: &Comment) -> Vec<(PathBuf, PhotoPath)> {
+        let photo_paths = self.images.iter().map(|i| {
+            let id = i.file_stem().and_then(|s| s.to_str()).unwrap();
+            (
+                i.clone(),
+                PhotoPath {
+                    analysis: comment.parent_id.clone(),
+                    comment: comment.id.clone().unwrap(),
+                    id: id.to_string()
+                }
+            )
+        }).collect();
+        photo_paths
     }
 }
 
@@ -89,6 +105,12 @@ struct CommentPath {
 struct DeleteResult {
     token: String,
     id: String
+}
+
+#[derive(Debug, Serialize)]
+struct UploadResult {
+    token: String,
+    comment: Comment
 }
 
 impl From<CommentPath> for DeleteCommentOptions {
@@ -149,58 +171,21 @@ fn now_nanos() -> f64 {
         })
 }
 
-fn make_comment(item: CommentPayload, auth: &Authentication, created_at: f64)
-                -> (Comment, Vec<(PathBuf, PhotoPath)>)
+async fn read_image_payload<'a>(comment_id: &str,
+                                req: &HttpRequest, payload: &mut Multipart)
+    -> Result<ImageUploadRequest, String>
 {
-    let epoch = now_nanos();
-    let comment = Comment {
-        id: item.id,
-        parent_id: item.parent_id,
-        username: item.username,
-        email: item.email,
-        web: item.web,
-        body: item.body,
-        images: Vec::new(),
-        auth: auth.clone(),
-        last_modified: epoch,
-        created_at: created_at
-    };
-    let photo_paths = item.images.iter().map(|i| {
-        let id = i.file_stem().and_then(|s| s.to_str()).unwrap();
-        (
-            i.clone(),
-            PhotoPath {
-                analysis: comment.parent_id.clone(),
-                comment: comment.id.clone().unwrap(),
-                id: id.to_string()
-            }
-        )
-    }).collect();
-    (comment, photo_paths)
-}
-
-async fn read_payload<'a>(_: &Models<'a>, req: &HttpRequest,
-                          payload: &mut Multipart)
-                          -> Result<CommentPayload, String>
-{
-    debug!("read_payload, start");
+    debug!("read_image_payload, start");
     // while let Ok(Some(mut field)) = payload.try_next().await {
 
     let content_length = read_content_length(req.headers())
         .ok_or("Content-Length must be set".to_string())?;
 
-    let mut id = None;
-    let mut parent_id = None;
-    let mut username = None;
-    let mut email = None;
-    let mut web = None;
-    let mut body = None;
-    let mut auth = None;
     let mut images = Vec::new();
 
     while let Some(item) = payload.next().await {
         if let Err(e) = item {
-            info!("commend_service::read_payload, could not read, e:{}", &e);
+            info!("could not read payload, e:{}", &e);
             Err(format!("Could not read payload, e: {}", &e))?;
             continue;
         }
@@ -214,35 +199,6 @@ async fn read_payload<'a>(_: &Models<'a>, req: &HttpRequest,
                &name, &filename, &mimetype);
 
         match (name, filename) {
-            // Text value
-            (Some(NAME_ID), _) => {
-                id = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            }
-            (Some(NAME_PARENTID), _) => {
-                parent_id = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            },
-            (Some(NAME_USERNAME), _) => {
-                username = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            },
-            (Some(NAME_EMAIL), _) => {
-                email = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            },
-            (Some(NAME_WEB), _) => {
-                web = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            },
-            (Some(NAME_BODY), _) => {
-                body = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            },
-            (Some(NAME_AUTH), _) => {
-                auth = str::from_utf8(&read_body(&mut field).await)
-                    .ok().map(|s| s.to_string());
-            },
             // File upload
             (Some(NAME_IMAGE0), Some(filename)) |
             (Some(NAME_IMAGE1), Some(filename)) |
@@ -250,8 +206,7 @@ async fn read_payload<'a>(_: &Models<'a>, req: &HttpRequest,
             (Some(NAME_IMAGE3), Some(filename)) |
             (Some(NAME_IMAGE4), Some(filename)) => {
                 let image_id =
-                    CommentPhotoIdGenerator::new(parent_id.as_ref().unwrap(),
-                                                 filename)
+                    CommentPhotoIdGenerator::new(comment_id, filename)
                     .generate();
                 let tmp = ImagePath {
                     name: image_id,
@@ -281,19 +236,8 @@ async fn read_payload<'a>(_: &Models<'a>, req: &HttpRequest,
             _ => continue
         }
     } 
-    let parent_id = parent_id.ok_or("Failed to read parent_id".to_string())?;
-    let username = username.ok_or("Failed to read username".to_string())?;
-    let body = body.ok_or("Failed to read body".to_string())?;
-    Ok(CommentPayload {
-        id: id,
-        parent_id: parent_id,
-        username: username,
-        email: email,
-        web: web,
-        body: body,
-        auth: auth,
-        images: images,
-        ..Default::default()
+    Ok(ImageUploadRequest {
+        images: images
     })
 }
 
@@ -308,41 +252,27 @@ fn read_authentication_bearer(headers: &HeaderMap) -> Option<&str> {
 }
 
 async fn add_comment(req: HttpRequest,
-                     mut payload: Multipart,
-                     pool: web::Data<DBConnectionPool>)
-    -> impl Responder {
-    println!("comment_service::add_comment");
+                     mut json: web::Json<CommentRequest>,
+                     pool: web::Data<DBConnectionPool>) -> impl Responder {
+    println!("start adding comment");
     let models = Models::new(pool.get_ref());
     // Read Authentication header
     let auth = read_authentication_bearer(&req.headers());
     let auth = match make_auth(auth) {
         Ok(a) => a,
-        Err(_) => make_auth(None).unwrap()
+        Err(_) => make_auth(None).unwrap() // Create new guest
     };
-    // Read multipart formdata
-    let form = read_payload(&models, &req, &mut payload).await;
-    if let Err(e) = form {
-        warn!("Failed to read payload, e: {}", &e);
-        return HttpResponse::BadRequest().finish();
-    }
-    let mut form = form.unwrap();
-    match form.id {
+    match json.id {
         // add_comments is allowed when id is None
         Some(_) => HttpResponse::Forbidden().finish(),
         None => {
+            // Assign new comment id
             let comment_id =
-                CommentIdGenerator::new(form.parent_id.as_ref(),
-                                        form.username.as_ref()).generate();
-            form.id = Some(comment_id);
-            let (mut comment, photos) = make_comment(form, &auth, now_nanos());
-            // Save photo earlier
-            for (src, dest) in &photos {
-                let photo = comment_photos::save(&models, &src, dest).await;
-                match photo {
-                    Ok(photos) => comment.images.push(photos),
-                    Err(e) => warn!("Skipped photo, e: {}", &e)
-                }
-            }
+                CommentIdGenerator::new(json.parent_id.as_ref(),
+                                        json.username.as_ref()).generate();
+            json.id = Some(comment_id);
+            json.created_at = None;
+            let comment = json.into_inner().to_comment(&auth);
             let a = comments::save(&models, &comment).await;
             match a {
                 Err(e) => {
@@ -364,6 +294,80 @@ async fn add_comment(req: HttpRequest,
                         }))
                 }
             }
+        }
+    }
+}
+
+async fn add_comment_images(req: HttpRequest,
+                            info: web::Path<CommentPath>,
+                            mut payload: Multipart,
+                            pool: web::Data<DBConnectionPool>)
+    -> impl Responder
+{
+    println!("start adding images on comment {}", &info.id);
+
+    // Load token
+    let auth = read_authentication_bearer(&req.headers())
+        .and_then(|a| TokenData::try_from(a).ok());
+    if auth.is_none() {
+        debug!("Token required");
+        return HttpResponse::Unauthorized().finish();
+    }
+
+    let token = auth.unwrap();
+    let models = Models::new(pool.get_ref());
+
+    // Check if comment owner
+    let mut comment = match comments::by_id(&models, &info.id).await {
+        Ok(Some(comment)) if !comment.is_editable(&token) => {
+            info!("Authorization unmatch, comment: {:?}, token: {:?}",
+                  &comment, &token);
+            return HttpResponse::Unauthorized().finish()
+        },
+        Ok(Some(comment)) => comment,
+        Err(e) => {
+            warn!("Failed to get comment, e: {}", &e);
+            return HttpResponse::NotFound().finish()
+        },
+        _ => return HttpResponse::NotFound().finish()
+    };
+
+    // Read multipart formdata
+    let form = read_image_payload((&comment).id.as_ref().unwrap(),
+                                  &req, &mut payload).await;
+    if let Err(e) = form {
+        warn!("Failed to read payload, e: {}", &e);
+        return HttpResponse::BadRequest().finish();
+    }
+    let form = form.unwrap();
+    let photos = form.paths(&comment);
+
+    let mut images = Vec::new();
+    // Save and convert
+    for (src, dest) in &photos {
+        let photo = comment_photos::save(&models, &src, dest).await;
+        match photo {
+            Ok(photos) => images.push(photos),
+            Err(e) => warn!("Skipped photo, e: {}", &e)
+        }
+    }
+
+    // Save comment
+    for profiles in images {
+        comment.add_image(profiles);
+    }
+    let result = comments::save(&models, &comment).await;
+
+    // Response
+    match result {
+        Ok(comment) => {
+            let token = String::from(Authentication::from(token));
+            HttpResponse::Ok()
+                .json(UploadResult { token: token, comment: comment })
+        },
+        Err(e) => {
+            warn!("Failed to add images on comment, e: {}", &e);
+            HttpResponse::InternalServerError().finish()
         }
     }
 }
@@ -517,6 +521,7 @@ pub fn service(scope: Scope) -> Scope {
         .route("/", web::get().to(list_comments))
         // .route("/{id}", web::get().to(get_comment))
         .route("/{id}", web::delete().to(delete_comment))
+        .route("/{id}/images/", web::post().to(add_comment_images))
 }
 
 #[derive(Deserialize)]

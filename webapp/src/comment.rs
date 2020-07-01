@@ -25,7 +25,7 @@ pub struct Comment {
     pub body: String,
 
     /// Images
-    pub images: Vec<Vec<Photo>>,
+    pub images: Vec<Vec<Photo>>, // [photo][profile]
 
     /// Authentication data
     pub auth: Authentication,
@@ -47,6 +47,27 @@ impl Comment {
             (Authentication::Signin { userid }, false) =>
                 userid == token.get_id(),
             _ => false
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn has_image(self: &Self, profiles: &Vec<Photo>) -> bool {
+        if profiles.len() == 0 {
+            false
+        } else {
+            let photo = &profiles[0];
+            self.images.iter().find(|v| {
+                v.len() > 0 && v[0].id == photo.id
+            }).is_some()
+        }
+    }
+
+    pub fn add_image(self: &mut Self, profiles: Vec<Photo>) {
+        if profiles.len() == 0 {
+            warn!("No profiles unexpectedly?");
+        } else {
+            // NOTE Assume photos id will never conflict
+            self.images.push(profiles);
         }
     }
 }

@@ -11,6 +11,7 @@ pub fn read_content_length(headers: &HeaderMap) -> Option<u64> {
         .and_then(|s| s.parse::<u64>().ok())
 }
 
+#[allow(dead_code)]
 pub async fn read_body(field: &mut Field) -> Bytes {
     let mut b = BytesMut::new();
     loop {
