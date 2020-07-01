@@ -1,3 +1,4 @@
+use std::fmt::{self, Formatter, Display};
 use std::path::PathBuf;
 use serde::{Serialize, Deserialize};
 
@@ -8,6 +9,16 @@ pub enum Profile {
     ORIGINAL_JPG,
     SCALE_1600_JPG,
     THUMBNAIL_256_JPG
+}
+
+impl Display for Profile {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{}", match self {
+            Profile::ORIGINAL_JPG => "o",
+            Profile::SCALE_1600_JPG => "p1600",
+            Profile::THUMBNAIL_256_JPG => "t256"
+        })
+    }
 }
 
 #[derive(Clone, PartialEq, Serialize, Debug)]
