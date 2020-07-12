@@ -5,23 +5,14 @@ services:
     volumes:
       - dict-volume:/var/lib/mecab/dic/mydic
   webapp:
-    build:
-      context: ./webapp
-      dockerfile: ../docker/webapp/Dockerfile
-      args:
-        UID: $UID
-        GID: $GID
-        UNAME: $UNAME
+    build: ./docker/webapp
     volumes:
-      - ./webapp:/usr/src/app
-      - ./data/webapp/:/data
+      - ./webapp:/usr/src
+      - app-bin:/target
+      - app-data:/data
       - dict-volume:/var/lib/mecab/dic/mydic
     ports:
       - "8088:8088"
-    user: $UID:$GID
-    links:
-      - elasticsearch
-      - fluentd
     depends_on:
       - elasticsearch
       - fluentd
@@ -35,26 +26,22 @@ services:
       RUST_LOG: debug
     entrypoint: /bin/bash
     command: "-i"
-    #entrypoint: /usr/local/cargo/bin/cargo
-    #command: "run app"
     tty: true
   elasticsearch:
     build: docker/elasticsearch
     volumes:
-      - ./data/elasticsearch:/usr/share/elasticsearch/data
+      - es0-data:/usr/share/elasticsearch/data
     restart: always
     environment:
       discovery.type: single-node
-      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
   nginx:
     image: nginx:1-alpine
     ports:
       - "8080:80"
-    links:
-      - webapp
-      - fluentd
     volumes:
       - ./docker/nginx/conf:/etc/nginx/conf.d
+      - ./docker/nginx/html:/usr/share/nginx/html
   fluentd:
     build: ./docker/fluentd
     volumes:
@@ -62,12 +49,17 @@ services:
     ports:
       - "24224:24224"
       - "24224:24224/udp"
+    environment:
+      ES_JAVA_OPTS: "-Xms256m -Xms256m"
   kibana:
     image: kibana:7.6.2
-    links:
-      - elasticsearch
     ports:
       - "5601:5601"
+    environment:
+      ES_JAVA_OPTS: "-Xms256m -Xms256m"
 volumes:
+  app-bin:
+  app-data:
+  es0-data:
   dict-volume:
 
