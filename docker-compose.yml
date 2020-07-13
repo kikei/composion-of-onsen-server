@@ -27,6 +27,13 @@ services:
     entrypoint: /bin/bash
     command: "-i"
     tty: true
+  cron:
+    build: docker/cron
+    volumes:
+      - app-bin:/app
+      - app-data:/data
+    depends_on:
+      - webapp
   elasticsearch:
     build: docker/elasticsearch
     volumes:
