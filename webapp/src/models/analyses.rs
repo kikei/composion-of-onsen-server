@@ -11,7 +11,8 @@ use crate::models::{Models};
 use crate::utils::elasticsearch::{
     GetResult, SearchResultItem, OperationResultType,
     Setup, SetupOptions,
-    Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
+    Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions,
+    DeleteOptions
 };
 use crate::utils::scrub;
 use crate::utils::json::from_value;
@@ -735,6 +736,25 @@ pub async fn save<'a>(models: &Models<'a>, a: &Analysis)
         Ok(None) => Err(String::from(format!("unexpected result in
                                              analyses::save"))),
         Err(e) => Err(String::from(format!("{}", e)))
+    }
+}
+
+pub async fn delete<'a>(models: &Models<'a>, id: &str) -> Result<String, String> {
+    let result =
+        models.analyses
+        .delete(DeleteOptions::new(id))
+        .await
+        .map(|r| {
+            debug!("analyses::delete, deleted, result: {:?}", &r);
+            match r.result {
+                OperationResultType::Deleted => true,
+                _ => false
+            }
+        });
+    match result {
+        Ok(true) => Ok(id.to_string()),
+        Ok(false) => Err(String::from(format!("unexpected result in analyses::delete"))),
+        Err(e) => Err(String::from(format!("{}", &e)))
     }
 }
 
