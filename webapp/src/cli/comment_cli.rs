@@ -115,7 +115,7 @@ fn get_order_files() -> impl Iterator<Item = OrderFile> {
         })
 }
 
-fn delete_comment(args: &DeleteArgs) {
+pub async fn delete_comment(args: &DeleteArgs) {
     let db = elasticsearch::get_unpooled_connection();
     if db.is_err() {
         error!("Failed to get connection, error: {}", db.unwrap_err());
@@ -124,37 +124,35 @@ fn delete_comment(args: &DeleteArgs) {
     let db = db.unwrap();
     let models = Models::new(&db);
 
-    Runtime::new().unwrap().block_on(async {
-        // Get target comment
-        let target = match comments::by_id(&models, &args.id).await {
-            Ok(Some(comment)) => comment,
-            Ok(None) => {
-                error!("Failed to find target comment");
-                return;
-            },
-            Err(e) => {
-                error!("Failed to get target comment, e: {}", &e);
-                return;
-            }
-        };
-
-        // Delete images under the target comment
-        for photo in target.images {
-            match comment_photos::delete(&models, &photo).await {
-                Ok(()) => info!("Successfully deleted photos on comment {:?}",
-                                &target.id),
-                Err(e) => warn!("{}, comment: {:?}", &e, &target.id)
-            }
+    // Get target comment
+    let target = match comments::by_id(&models, &args.id).await {
+        Ok(Some(comment)) => comment,
+        Ok(None) => {
+            error!("Failed to find target comment");
+            return;
+        },
+        Err(e) => {
+            error!("Failed to get target comment, e: {}", &e);
+            return;
         }
+    };
 
-        // Delete target comment
-        match comments::delete(&models, DeleteCommentOptions {
-            id: args.id.to_string()
-        }).await {
-            Ok(id) => info!("Successfully deleted comment: {}", &id),
-            Err(e) => error!("Failed to delete comment: {}, e: {}", &args.id, &e)
+    // Delete images under the target comment
+    for photo in target.images {
+        match comment_photos::delete(&models, &photo).await {
+            Ok(()) => info!("Successfully deleted photos on comment {:?}",
+                            &target.id),
+            Err(e) => warn!("{}, comment: {:?}", &e, &target.id)
         }
-    })
+    }
+
+    // Delete target comment
+    match comments::delete(&models, DeleteCommentOptions {
+        id: args.id.to_string()
+    }).await {
+        Ok(id) => info!("Successfully deleted comment: {}", &id),
+        Err(e) => error!("Failed to delete comment: {}, e: {}", &args.id, &e)
+    }
 }
 
 fn process_image(args: &ProcessImageArgs) {
@@ -193,8 +191,10 @@ pub fn run(args: &Action) {
     env_logger::init();
     info!("Log initialized.");
 
+    let mut rt = Runtime::new().unwrap();
+
     match args {
-        Action::Delete(args) => delete_comment(&args),
+        Action::Delete(args) => rt.block_on(delete_comment(&args)),
         Action::ProcessImage(args) => process_image(&args)
     }
 }
