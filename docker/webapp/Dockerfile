@@ -1,4 +1,4 @@
-FROM rust:1.43
+FROM rust:1.44
 
 ENV DICDIR /var/lib/mecab/dic/mydic
 ENV CARGO_TARGET_DIR /target
