@@ -32,7 +32,7 @@ use crate::utils::{
 
 const IMAGE_BYTES_MIN: usize = 1024 * 10;
 
-const DIRECTORY_UPLOAD_TMP: &str = "/tmp/comments/images";
+const DIRECTORY_UPLOAD_TMP: &str = "/data/comments/upload";
 
 const NAME_IMAGE0: &str = "images0";
 const NAME_IMAGE1: &str = "images1";
