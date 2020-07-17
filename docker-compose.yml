@@ -46,9 +46,11 @@ services:
     image: nginx:1-alpine
     ports:
       - "8080:80"
+      - "8443:443"
     volumes:
       - ./docker/nginx/conf:/etc/nginx/conf.d
       - ./docker/nginx/html:/usr/share/nginx/html
+      - ./docker/ssl:/etc/ssl
   fluentd:
     build: ./docker/fluentd
     volumes:
