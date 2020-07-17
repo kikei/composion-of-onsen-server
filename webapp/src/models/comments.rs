@@ -28,6 +28,8 @@ const KEY_LAST_MODIFIED: &str = "_lamo";
 const KEY_CREATED_AT: &str = "_crat";
 const KEY_AUTH: &str = "auth";
 
+const KEY_PARENT_ID_KEYWORD: &str = "pid.keyword";
+
 const KEY_AUTH_GUESTID: &str = "user";
 const KEY_AUTH_USERID: &str = "user";
 const KEY_AUTH_TYPE: &str = "t";
@@ -253,7 +255,7 @@ pub async fn select<'a>(models: &Models<'a>, options: &SelectOptions) ->
         })),
         Some(SelectQuery::Parent(parent_id)) => Some(json!({
             "term": {
-                KEY_PARENT_ID: parent_id.as_str()
+                KEY_PARENT_ID_KEYWORD: parent_id.as_str()
             }
         }))
     };
