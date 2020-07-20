@@ -52,18 +52,13 @@ services:
       - ./docker/nginx/html:/usr/share/nginx/html
       - ./docker/ssl:/etc/ssl
   fluentd:
-    build: ./docker/fluentd
+    image: fluent/fluentd:latest
     volumes:
       - ./docker/fluentd/conf:/fluentd/etc
+      - ./logs:/var/log
     ports:
       - "24224:24224"
       - "24224:24224/udp"
-    environment:
-      ES_JAVA_OPTS: "-Xms256m -Xms256m"
-  kibana:
-    image: kibana:7.6.2
-    ports:
-      - "5601:5601"
     environment:
       ES_JAVA_OPTS: "-Xms256m -Xms256m"
 volumes:
