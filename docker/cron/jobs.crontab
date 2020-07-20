@@ -1,2 +1,4 @@
 RUST_LOG=debug
 */5 * * * * /app/release/onsen-compo comments process-image >/proc/1/fd/1 2>/proc/1/fd/2
+* * * * * find /data/comments/upload -type f -mtime j+10 | xargs rm
+* * * * * find /data/comments/images -type d -empty | xargs rmdir
