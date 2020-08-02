@@ -4,14 +4,16 @@ use tokio::runtime::Runtime;
 
 use crate::utils::elasticsearch;
 use crate::template::{Template};
-use crate::models::{self, Models};
+use crate::models::{self, templates, Models};
 
 #[derive(StructOpt, Debug)]
 pub enum Action {
     /// Show template
     Show(ShowArgs),
     /// Add template
-    Add(AddArgs)
+    Add(AddArgs),
+    /// Delete template
+    Delete(DeleteArgs)
 }
 
 #[derive(StructOpt, Debug)]
@@ -34,6 +36,21 @@ pub struct AddArgs {
     /// Path to template file
     #[structopt(short, long)]
     pub path: Option<String>
+}
+
+#[derive(StructOpt, Debug)]
+pub struct DeleteArgs {
+    /// Template Id
+    #[structopt(short, long)]
+    pub id: String
+}
+
+impl From<&DeleteArgs> for templates::DeleteTemplateOptions {
+    fn from(a: &DeleteArgs) -> Self {
+        templates::DeleteTemplateOptions {
+            id: a.id.clone()
+        }
+    }
 }
 
 // impl Args {
@@ -102,6 +119,14 @@ async fn template_add<'a>(models: &Models<'a>, args: &AddArgs) {
     }
 }
 
+async fn template_delete<'a>(models: &Models<'a>, args: &DeleteArgs) {
+    let options = templates::DeleteTemplateOptions::from(args);
+    match models::templates::delete(models, options).await {
+        Ok(t) => println!("Successfully delete template: {:?}", t),
+        Err(e) => println!("Failed to delete template, error: {}", e)
+    }
+}
+
 pub fn run(args: &Action) {
     // TODO Use setup_logger
     env_logger::init();
@@ -118,6 +143,7 @@ pub fn run(args: &Action) {
         match args {
             Action::Add(args) => template_add(&models, &args).await,
             Action::Show(args) => template_show(&models, &args).await,
+            Action::Delete(args) => template_delete(&models, &args).await
         }
     })
 }

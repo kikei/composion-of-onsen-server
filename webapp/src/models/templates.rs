@@ -4,9 +4,15 @@ use serde_json::{json, Value};
 use crate::models::{Models};
 use crate::template::{self, Template};
 use crate::utils::elasticsearch::{
-    GetResult, SearchResultItem,
-    Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions
+    GetResult, SearchResultItem, OperationResultType,
+    Operations, GetOptions, SearchOptions, InsertOptions, UpdateOptions,
+    DeleteOptions
 };
+
+pub struct DeleteTemplateOptions {
+    /// Comment id
+    pub id: String
+}
 
 impl TryFrom<&GetResult> for Template {
     type Error = String;
@@ -132,5 +138,25 @@ pub async fn save<'a>(models: &Models<'a>, t: &Template) -> Result<Template, Str
         //     Err(String::from(format!("unexpected result in template::save,
         //                              e: {:?}", &e))),
         Err(e) => Err(String::from(format!("{}", e)))
+    }
+}
+
+pub async fn delete<'a>(models: &Models<'a>, options: DeleteTemplateOptions)
+                        -> Result<String, String>
+{
+    let result = models.templates
+        .delete(DeleteOptions::new(options.id.as_str()))
+        .await
+        .map(|r| {
+            debug!("templates::delete, result: {:?}", &r);
+            match r.result {
+                OperationResultType::Deleted => Some(r._id),
+                _ => None
+            }
+        });
+    match result {
+        Ok(Some(id)) => Ok(id),
+        Ok(None) => Err(String::from("unexpected result in templates::delete")),
+        Err(e) => Err(String::from(format!("{}", &e)))
     }
 }
