@@ -69,6 +69,10 @@ async fn template_show<'a>(models: &Models<'a>, args: &ShowArgs) {
 }
 
 async fn template_add<'a>(models: &Models<'a>, args: &AddArgs) {
+    if args.id.is_none() {
+        println!("ID required, args: {:?}", args);
+        return;
+    }
     if args.path.is_none() {
         println!("Path required, args: {:?}", args);
         return;
@@ -77,6 +81,7 @@ async fn template_add<'a>(models: &Models<'a>, args: &AddArgs) {
         println!("Name required, args: {:?}", args);
         return;
     }
+    let id = args.id.as_ref().unwrap();
     let path = args.path.as_ref().unwrap();
     let name = args.name.as_ref().unwrap();
     let body = fs::read_to_string(path.as_str());
@@ -87,7 +92,7 @@ async fn template_add<'a>(models: &Models<'a>, args: &AddArgs) {
     };
     
     let t = Template {
-        id: args.id.clone(),
+        id: Some(id.to_string()),
         name: name.to_string(),
         body: body.unwrap()
     };

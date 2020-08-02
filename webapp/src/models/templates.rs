@@ -93,7 +93,8 @@ pub async fn save<'a>(models: &Models<'a>, t: &Template) -> Result<Template, Str
     // TODO Check template is valid in handlebars syntax.
     debug!("templates::save, template: {:?} name: {}", &t.id, &t.name);
     // Clone object
-    let v = Value::from(t);
+    let mut v = Value::from(t);
+    v.as_object_mut().unwrap().remove(template::KEY_ID);
     let result = match &t.id {
         Some(id) => { // Update exists object
             models.templates
