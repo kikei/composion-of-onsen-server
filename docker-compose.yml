@@ -70,6 +70,15 @@ services:
   #    - ./backup/volumes:/output
   #    - ./docker/nginx/html:/backup/nginx/html
   #  entrypoint: "sh -c 'cd /backup && tar jcvf /output/backup.tar.bz2 app-bin/release/onsen-compo app-data es0-data nginx'"
+  #restore:
+  #  image: alpine
+  #  volumes:
+  #    - app-bin:/backup/app-bin
+  #    - app-data:/backup/app-data
+  #    - es0-data:/backup/es0-data
+  #    - ./backup/volumes:/input
+  #    - ./docker/nginx/html:/backup/nginx/html
+  #  entrypoint: "sh -c 'cd /input && tar jxvf backup.tar.bz2 && cp -a * /backup'"
 volumes:
   app-bin:
   app-data:
