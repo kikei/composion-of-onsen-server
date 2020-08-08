@@ -1,0 +1,875 @@
+<!-- default template -->
+<div style="background-color:#f8fff0;border:solid 1px #ccc;padding:1em;">
+    <header class="has-text-centered">
+        <h1 class="title is-size-3">温泉分析書</h1>
+        {{#if header}}<p>{{header}}</p>{{/if}}
+    </header>
+    <div class="columns">
+        <div class="column is-3 is-offset-9">
+            {{no}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">1.</div>
+                <div class="column">分析申請者</div>
+            </div>
+        </div>
+        <div class="column">
+            <div class="columns is-gapless is-low">
+                <div class="column is-4">住所</div>
+                <div class="column">{{applicantAddress}}</div>
+            </div>
+            <div class="columns is-gapless is-low">
+                <div class="column is-4">氏名</div>
+                <div class="column">{{applicantName}}</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">2.</div>
+                <div class="column">源泉名及び湧出量</div>
+            </div>
+        </div>
+        <div class="column">
+            <div class="columns is-gapless is-low">
+                <div class="column is-4">源泉名</div>
+                <div class="column">{{name}}</div>
+            </div>
+            <div class="columns is-gapless is-low">
+                <div class="column is-4">源泉湧出地</div>
+                <div class="column">{{location}}</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">3.</div>
+                <div class="column">湧出地における調査及び試験成績</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(イ) 調査及び試験者</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{investigator}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ロ) 調査及び試験年月日</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{investigatedDate}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ハ) 泉温</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{temperature}}
+            {{temperatureExtra}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ニ) 湧出量/利用量 (最大)</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{yield}}
+            {{yieldExtra}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ホ) 知覚的試験</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{perception}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ヘ) pH値</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{pH}}
+            {{phExtra}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ト) 電気伝導率</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{conductivity}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(チ) ラドン (Rn)</div>
+            </div>
+        </div>
+        <div class="column is-8">
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">4.</div>
+                <div class="column">試験室における試験成績</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(イ) 試験者</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{tester}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ロ) 分析終了年月日</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{testedDate}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ハ) 知覚的試験</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{testedPerception}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ニ) 密度</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{testedDencity}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ホ) pH値</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{testedPH}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">(ヘ) 蒸発残留物</div>
+            </div>
+        </div>
+        <div class="column is-8">
+            {{testedER}}
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">5.</div>
+                <div class="column">試料1kg中の成分・分量及び組成</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless">
+        <div class="column is-6">
+            (イ) 陽イオン 
+            <table>
+                <tr>
+                    <td colspan="2">成分</td>
+                    <td>ﾐﾘｸﾞﾗﾑ</td>
+                    <td>ﾐﾘﾊﾞﾙ</td>
+                    <td>ﾐﾘﾊﾞﾙ%</td>
+                </tr>
+                {{#with positiveIon.H as |a|~}}
+                <tr>
+                    <td class="has-text-justified">水素イオン</td>
+                    <td>{{htmlf "H"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Li as |a|~}}
+                <tr>
+                    <td class="has-text-justified">リチウムイオン</td>
+                    <td>{{htmlf "Li"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Na as |a|~}}
+                <tr>
+                    <td class="has-text-justified">ナトリウムイオン</td>
+                    <td>{{htmlf "Na"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.K as |a|~}}
+                <tr>
+                    <td class="has-text-justified">カリウムイオン</td>
+                    <td>{{htmlf "K"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.NH4 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">アンモニウムイオン</td>
+                    <td>{{htmlf "NH4"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Mg as |a|~}}
+                <tr>
+                    <td class="has-text-justified">マグネシウムイオン</td>
+                    <td>{{htmlf "Mg"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Ca as |a|~}}
+                <tr>
+                    <td class="has-text-justified">カルシウムイオン</td>
+                    <td>{{htmlf "Ca"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Sr as |a|~}}
+                <tr>
+                    <td class="has-text-justified">ストロンチウムイオン</td>
+                    <td>{{htmlf "Sr"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Ba as |a|~}}
+                <tr>
+                    <td class="has-text-justified">バリウムイオン</td>
+                    <td>{{htmlf "Ba"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Br as |a|~}}
+                <tr>
+                    <td class="has-text-justified">!!!!!</td>
+                    <td>{{htmlf "Br"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Al as |a|~}}
+                <tr>
+                    <td class="has-text-justified">アルミニウムイオン</td>
+                    <td>{{htmlf "Al"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.MnII as |a|~}}
+                <tr>
+                    <td class="has-text-justified">マンガン (II) イオン</td>
+                    <td>{{htmlf "MnII"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.FeII as |a|~}}
+                <tr>
+                    <td class="has-text-justified">鉄 (II) イオン</td>
+                    <td>{{htmlf "FeII"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.FeIII as |a|~}}
+                <tr>
+                    <td class="has-text-justified">鉄 (III) イオン</td>
+                    <td>{{htmlf "FeIII"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Cr as |a|~}}
+                <tr>
+                    <td class="has-text-justified">クロムイオン</td>
+                    <td>{{htmlf "Cr"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Cu as |a|~}}
+                <tr>
+                    <td class="has-text-justified">銅イオン</td>
+                    <td>{{htmlf "Cu"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.ZnII as |a|~}}
+                <tr>
+                    <td class="has-text-justified">亜鉛イオン</td>
+                    <td>{{htmlf "ZnII"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with positiveIon.Pb as |a|~}}
+                <tr>
+                    <td class="has-text-justified">鉛イオン</td>
+                    <td>{{htmlf "Pb"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with totalPositiveIon as | total |}}
+                <tr>
+                    <td colspan="2" class="has-text-justified">陽イオン計</td>
+                    <td class="has-text-right">{{prec total.mg 6}}</td>
+                    <td class="has-text-right">{{prec total.mval 6}}</td>
+                    <td class="has-text-right">{{fixed total.mvalPercent 0}}</td>
+                </tr>
+                {{/with}}
+            </table>
+        </div>
+        <div class="column is-6">
+            (ロ) 陰イオン 
+            <table>
+                <tr>
+                    <td colspan="2">成分</td>
+                    <td>ﾐﾘｸﾞﾗﾑ</td>
+                    <td>ﾐﾘﾊﾞﾙ</td>
+                    <td>ﾐﾘﾊﾞﾙ%</td>
+                </tr>
+                {{#with negativeIon.F as |a|~}}
+                <tr>
+                    <td class="has-text-justified">ふっ化物イオン</td>
+                    <td>{{htmlf "F"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.Cl as |a|~}}
+                <tr>
+                    <td class="has-text-justified">塩化物イオン</td>
+                    <td>{{htmlf "Cl"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.Br as |a|~}}
+                <tr>
+                    <td class="has-text-justified">臭化物イオン</td>
+                    <td>{{htmlf "Br"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.I as |a|~}}
+                <tr>
+                    <td class="has-text-justified">よう化物イオン</td>
+                    <td>{{htmlf "I"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.OH as |a|~}}
+                <tr>
+                    <td class="has-text-justified">水酸化物イオン</td>
+                    <td>{{htmlf "OH"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.HS as |a|~}}
+                <tr>
+                    <td class="has-text-justified">硫化水素イオン</td>
+                    <td>{{htmlf "HS"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.S as |a|~}}
+                <tr>
+                    <td class="has-text-justified">硫化物イオン</td>
+                    <td>{{htmlf "S"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.S2O3 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">チオ硫酸イオン</td>
+                    <td>{{htmlf "S2O3"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.HSO4 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">硫酸水素イオン</td>
+                    <td>{{htmlf "HSO4"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.SO4 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">硫酸イオン</td>
+                    <td>{{htmlf "SO4"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.HNO2 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">亜硝酸イオン</td>
+                    <td>{{htmlf "HNO2"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.NO3 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">硝酸イオン</td>
+                    <td>{{htmlf "NO3"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.HPO4 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">りん酸水素イオン</td>
+                    <td>{{htmlf "HPO4"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.PO4 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">りん酸イオン</td>
+                    <td>{{htmlf "PO4"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.HCO3 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">炭酸水素イオン</td>
+                    <td>{{htmlf "HCO3"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.CO3 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">炭酸イオン</td>
+                    <td>{{htmlf "CO3"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.AsO2 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">メタ亜砒酸イオン</td>
+                    <td>{{htmlf "AsO2"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.HSiO3 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">メタけい酸イオン</td>
+                    <td>{{htmlf "HSiO3"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with negativeIon.BO2 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">メタほう酸イオン</td>
+                    <td>{{htmlf "BO2"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mval 5}}</td>
+                    <td class="has-text-right">{{fixed a.mvalPercent 2}}</td>
+                </tr>
+                {{/with~}}
+                {{#with totalNegativeIon as | total |}}
+                <tr>
+                    <td colspan="2" class="has-text-justified">陰イオン計</td>
+                    <td class="has-text-right">{{prec total.mg 6}}</td>
+                    <td class="has-text-right">{{prec total.mval 6}}</td>
+                    <td class="has-text-right">{{fixed total.mvalPercent 0}}</td>
+                </tr>
+                {{/with}}
+            </table>
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-12">
+            (ハ) 遊離成分
+        </div>
+    </div>
+    <div class="columns is-gapless">
+        <div class="column is-6">
+            <table>
+                <tr>
+                    <td colspan="2">非遊離成分</td>
+                    <td>ﾐﾘｸﾞﾗﾑ</td>
+                    <td>ﾐﾘﾓﾙ</td>
+                </tr>
+                {{#with undissociated.HAsO2 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">メタ亜砒酸</td>
+                    <td>{{htmlf "HAsO2"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+                {{#with undissociated.H2SiO3 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">メタけい酸</td>
+                    <td>{{htmlf "H2SiO3"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+                {{#with undissociated.HBO2 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">メタほう酸</td>
+                    <td>{{htmlf "HBO2"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+                {{#with totalUndissociated as |a|~}}
+                <tr>
+                    <td colspan="2" class="has-text-justified">非遊離成分合計</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+            </table>
+        </div>
+        <div class="column is-6">
+            <table>
+                <tr>
+                    <td colspan="2">成分</td>
+                    <td>ﾐﾘｸﾞﾗﾑ</td>
+                    <td>ﾐﾘﾓﾙ</td>
+                </tr>
+                {{#with gas.CO2 as |a|~}}
+                <tr>
+                    <td class="has-text-justified">遊離二酸化炭素</td>
+                    <td>{{htmlf "CO2"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+                {{#with gas.H2S as |a|~}}
+                <tr>
+                    <td class="has-text-justified">遊離硫化水素</td>
+                    <td>{{htmlf "H2S"}}</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+                {{#with totalGas as |a|~}}
+                <tr>
+                    <td colspan="2" class="has-text-justified">溶存ガス成分合計</td>
+                    <td class="has-text-right">{{prec a.mg 5}}</td>
+                    <td class="has-text-right">{{prec a.mmol 5}}</td>
+                </tr>
+                {{/with~}}
+            </table>
+        </div>
+    </div>
+    <div class="columns is-gapless">
+        <div class="column is-6">
+            溶存物質合計 (ガス性のものを除く) {{totalMelt.mg}} mg/kg
+        </div>
+        <div class="column is-6">
+            成分総計 {{total.mg}} mg/kg
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">6.</div>
+                <div class="column">判定</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless">
+        <div class="column is-12">
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">{{quality}}</div>
+            </div>
+        </div>
+    </div>
+    <div class="columns is-gapless is-low">
+        <div class="column is-12">
+            (ニ) その他微量成分 (mg)
+        </div>
+    </div>
+    <div class="columns is-multiline is-gapless is-low">
+        {{#with minor.Hg as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    総水銀
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "Hg"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.As as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    総砒素
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "As"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.Cr as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    銅イオン
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "Cu"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.Cr as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    クロム
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "Cr"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.Pb as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    鉛イオン
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "Pb"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.Cd as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    カドミウムイオン
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "Cd"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.Zn as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    亜鉛
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "Zn"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.ZnII as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    亜鉛イオン
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "ZnII"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+        {{#with minor.NO3 as |a|~}}
+        <div class="column is-6">
+            <div class="columns is-gapless is-centered is-mobile">
+                <div class="column is-5 has-text-right">
+                    硝酸イオン
+                </div>
+                <div class="column is-1 has-text-right">
+                    ({{htmlf "NO3"}})
+                </div>
+                <div class="column is-6 has-text-right">
+                    {{prec a.mg 5}}
+                </div>
+            </div>
+        </div>
+        {{/with}}
+    </div>
+    <div class="columns is-gapless">
+        <div class="column is-4">
+            <div class="columns is-gapless is-low is-mobile">
+                <div class="column is-1">7.</div>
+                <div class="column">禁忌症等</div>
+            </div>
+            <div class="columns is-gapless is-low">
+                <div class="column is-1"></div>
+                <div class="column">温泉分析書別表に記載する。</div>
+            </div>
+        </div>
+    </div>
+    {{#if footer~}}
+    <div style="background-color:#f0f6ee;padding:1em;">
+        <div class="columns is-gapless is-low">
+            <div class="column is-12">
+                補足
+            </div>
+        </div>
+        <div class="columns">
+            <div class="column is-12">
+                <div class="columns is-gapless">
+                    <div class="column is-1"></div>
+                    <div class="column">{{footer}}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{/if}}
+</div>

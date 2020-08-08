@@ -1,0 +1,237 @@
+源泉名: {{name}}
+湧出地: {{location}}
+分析年月日: {{testedDate}}
+
+湧出量 {{yield}} {{yieldExtra}}
+pH {{pH}}
+泉温: {{temperature}} {{temperatureExtra}}
+泉質 {{quality}}
+溶存物質合計 (ガス性のものを除く) {{totalMelt.mg}} mg/kg
+成分総計 {{total.mg}} mg/kg
+
+温泉の成分は以下の通り:
+
+<h6>(1) 陽イオン</h6>
+<table>
+    <tr><th>成分</th><th>ミリグラム [mg/kg]</th><th>ミリバル [mval/kg]</th><th>ミリバル% [mval%]</th></tr>
+    {{#with positiveIon.H as |a|~}}
+    <tr><td>水素イオン ({{htmlf "H"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+    
+    {{#with positiveIon.Li as |a|~}}
+    <tr><td>リチウムイオン ({{htmlf "Li"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Na as |a|~}}
+    <tr><td>ナトリウムイオン ({{htmlf "Na"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.K as |a|~}}
+    <tr><td>カリウムイオン ({{htmlf "K"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.NH4 as |a|~}}
+    <tr><td>アンモニウムイオン ({{htmlf "NH4"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Mg as |a|~}}
+    <tr><td>マグネシウムイオン ({{htmlf "Mg"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Ca as |a|~}}
+    <tr><td>カルシウムイオン ({{htmlf "Ca"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Sr as |a|~}}
+    <tr><td>ストロンチウムイオン ({{htmlf "Sr"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Br as |a|~}}
+    <tr><td>バリウムイオン ({{htmlf "Br"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Al as |a|~}}
+    <tr><td>アルミニウムイオン ({{htmlf "Al"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.MnII as |a|~}}
+    <tr><td>マンガンイオン ({{htmlf "MnII"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.FeII as |a|~}}
+    <tr><td>鉄 (II) イオン ({{htmlf "FeII"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.FeIII as |a|~}}
+    <tr><td>鉄 (III) イオン ({{htmlf "FeIII"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.Cu as |a|~}}
+    <tr><td>銅イオン ({{htmlf "Cu"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with positiveIon.ZnII as |a|~}}
+    <tr><td>亜鉛イオン ({{htmlf "ZnII"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with totalPositiveIon as |a|~}}
+    <tr><td>陽イオン計</td><td>{{prec a.mg 3}}</td><td>{{prec a.mval 3}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+</table>
+<h6>(2) 陰イオン</h6>
+<table>
+    <tr><th>成分</th><th>ミリグラム [mg/kg]</th><th>ミリバル [mval/kg]</th><th>ミリバル% [mval%]</th></tr>
+    {{#with negativeIon.F as |a|~}}
+    <tr><td>フッ素イオン ({{htmlf "F"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.Cl as |a|~}}
+    <tr><td>塩素イオン ({{htmlf "Cl"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.Br as |a|~}}
+    <tr><td>臭素イオン ({{htmlf "Br"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.I as |a|~}}
+    <tr><td>ヨウ化物イオン ({{htmlf "I"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.OH as |a|~}}
+    <tr><td>水酸イオン ({{htmlf "OH"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.HS as |a|~}}
+    <tr><td>硫化水素イオン ({{htmlf "HS"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.S as |a|~}}
+    <tr><td>硫化物イオン ({{htmlf "S"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.S2O3 as |a|~}}
+    <tr><td>チオ硫酸イオン ({{htmlf "S2O3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.HSO4 as |a|~}}
+    <tr><td>硫酸水素イオン ({{htmlf "HSO4"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.SO4 as |a|~}}
+    <tr><td>硫酸イオン ({{htmlf "SO4"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.HNO2 as |a|~}}
+    <tr><td>亜硝酸イオン ({{htmlf "HNO2"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.NO3 as |a|~}}
+    <tr><td>硝酸イオン ({{htmlf "NO3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.HPO4 as |a|~}}
+    <tr><td>リン酸水素イオン ({{htmlf "HPO4"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.PO4 as |a|~}}
+    <tr><td>リン酸イオン ({{htmlf "PO4"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.HCO3 as |a|~}}
+    <tr><td>炭酸水素イオン ({{htmlf "HCO3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.CO3 as |a|~}}
+    <tr><td>炭酸イオン ({{htmlf "CO3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.AsO2 as |a|~}}
+    <tr><td>メタ亜砒酸イオン ({{htmlf "AsO2"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.HSiO3 as |a|~}}
+    <tr><td>メタケイ酸イオン ({{htmlf "HSiO3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with negativeIon.BO2 as |a|~}}
+    <tr><td>メタホウ酸イオン ({{htmlf "BO2"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mval 5}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+
+    {{#with totalNegativeIon as |a|~}}
+    <tr><td>陰イオン計</td><td>{{prec a.mg 3}}</td><td>{{prec a.mval 3}}</td><td>{{fixed a.mvalPercent 2}}</td></tr>
+    {{/with~}}
+</table>
+<h6>(3) 遊離成分</h6>
+<h7>非解離成分:</h7>
+<table>
+    <tr><th>成分</th><th>ミリグラム [mg/kg]</th><th>ミリモル [mmol/kg]</th></tr>
+    {{#with undissociated.HAsO2 as |a|~}}
+    <tr><td>メタ亜砒酸 ({{htmlf "HAsO2"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with undissociated.H2SiO3 as |a|~}}
+    <tr><td>メタケイ酸 ({{htmlf "H2SiO3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with undissociated.HBO2 as |a|~}}
+    <tr><td>メタホウ酸 ({{htmlf "HBO2"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with totalUndissociated as |a|~}}
+    <tr><td>非解離成分計</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+</table>
+<h7>溶存ガス成分:</h7>
+<table>
+    <tr><th>成分</th><th>ミリグラム [mg/kg]</th><th>ミリモル [mmol/kg]</th></tr>
+    {{#with gas.CO2 as |a|~}}
+    <tr><td>遊離二酸化炭素 ({{htmlf "CO2"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with gas.H2S as |a|~}}
+    <tr><td>遊離硫化水素 ({{htmlf "H2S"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with totalGas as |a|~}}
+    <tr><td>溶存ガス成分計</td><td>{{prec a.mg 5}}</td><td>{{fixed a.mmol 2}}</td></tr>
+    {{/with~}}
+</table>
+<h6>(4) その他の微量成分</h6>
+<table>
+    <tr><th>成分</th><th>ミリグラム [mg/kg]</th><th>ミリモル [mmol/kg]</th></tr>
+    {{#with minor.As as |a|~}}
+    <tr><td>総砒素 ({{htmlf "As"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.Hg as |a|~}}
+    <tr><td>総水銀 ({{htmlf "Hg"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.Cu as |a|~}}
+    <tr><td>銅イオン ({{htmlf "Cu"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.Cr as |a|~}}
+    <tr><td>クロム ({{htmlf "Cr"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.Pb as |a|~}}
+    <tr><td>鉛イオン ({{htmlf "Pb"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.Cd as |a|~}}
+    <tr><td>カドミウムイオン ({{htmlf "Cd"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.Zn as |a|~}}
+    <tr><td>亜鉛イオン ({{htmlf "Zn"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with minor.NO3 as |a|~}}
+    <tr><td>硝酸イオン ({{htmlf "NO3"}})</td><td>{{prec a.mg 5}}</td><td>{{prec a.mmol 5}}</td></tr>
+    {{/with~}}
+
+    {{#with totalMinor as |a|~}}
+    <tr><td>微量成分計</td><td>{{prec a.mg 3}}</td><td>{{fixed a.mmol 2}}</td></tr>
+    {{/with~}}
+</table>

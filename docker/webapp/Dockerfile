@@ -17,4 +17,13 @@ RUN apt-get update && apt-get install -y \
 RUN grep -v dicdir /etc/mecabrc > ~/.mecabrc
 RUN echo "dicdir = $DICDIR" >> ~/.mecabrc
 
+# Setup templates
+/target/rerelease/onsen-compo template add --id default \
+  --name "Default template" \
+  --path /usr/src/data/templates/default.html
+
+/target/rerelease/onsen-compo template add --id ghost \
+  --name "For ghost blog" \
+  --path /usr/src/data/templates/ghost.html
+
 ENTRYPOINT ["/target/release/onsen-compose", "app"]
